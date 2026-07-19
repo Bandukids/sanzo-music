@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+
+/* 自定义精致滚动条 */
+#mood-text-input::-webkit-scrollbar {
+  width: 4px;
+}
+#mood-text-input::-webkit-scrollbar-track {
+  background: transparent;
+}
+#mood-text-input::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 157, 0.25);
+}
+#mood-text-input::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 157, 0.6);
+}
