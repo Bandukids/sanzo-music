@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+ <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <meta name="theme-color" content="#dce9f6"><meta name="description" content="在 SANZO 探索音乐，发现精选歌曲和创作者，收集属于你的声音。">
+ <title>SANZO · 探索音乐</title><script src="/workspace-theme.js"></script>
+ <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b162a'/%3E%3Cpath d='M7 19v-6m6 12V7m6 15V10m6 9v-6' stroke='%23ff914d' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+ <link rel="stylesheet" href="/explore.css"><script type="module" src="/explore.js"></script>
+<link rel="stylesheet" href="/site-shell.css"><script type="module" src="/site-shell.js"></script>
+<link rel="stylesheet" href="/immersive-player.css">
+<link rel="stylesheet" href="/player-visuals.css"><link rel="stylesheet" href="/listening-dock.css">
+</head>
+<body class="app-shell" data-page="explore">
+<aside id="app-sidebar" class="app-sidebar" aria-label="页面导航"></aside>
+<a class="skip-link" href="#explore-content">跳到音乐</a>
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+ <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></symbol>
+ <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+ <symbol id="i-next" viewBox="0 0 24 24"><path d="m6 5 10 7-10 7ZM18 5v14"/></symbol>
+ <symbol id="i-prev" viewBox="0 0 24 24"><path d="m18 5-10 7 10 7ZM6 5v14"/></symbol>
+ <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+ <symbol id="i-album" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="11" r="4"/><path d="M10 18h4"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+ <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+ <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+ <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+ <symbol id="i-comment" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 0 1 19 0Z"/><path d="M7 9h10M7 13h6"/></symbol>
+ <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 6h3c4 0 8 12 12 12h3M3 18h3c1.5 0 3-1.8 4.5-4M14 9c1.5-2 2.5-3 4-3h3m-3-3 3 3-3 3m0 6 3 3-3 3"/></symbol>
+ <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 10V8a3 3 0 0 1 3-3h13m-3-3 3 3-3 3M20 14v2a3 3 0 0 1-3 3H4m3-3-3 3 3 3"/></symbol>
+ <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+ <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4ZM16 9l6 6m0-6-6 6"/></symbol>
+ <symbol id="i-queue" viewBox="0 0 24 24"><path d="M3 5h17M3 11h11M3 17h9m5-5 5 5-5 5Z"/></symbol>
+ <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+ <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A9 9 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"/></symbol>
+ <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></symbol>
+</defs></svg>
+<canvas id="workspace-particles" aria-hidden="true"></canvas><div class="page-aura" aria-hidden="true"></div>
+<header class="explore-header glass">
+ <div class="shell-breadcrumb"><a href="/">首页</a><span class="breadcrumb-slash">/</span><strong>探索音乐</strong></div>
+ <div class="header-tools"><button class="theme-toggle" id="theme-toggle" aria-label="切换到深色模式"><svg aria-hidden="true"><use id="theme-icon" href="#i-sun"/></svg><span id="theme-label">浅色</span></button><button class="icon-button motion-toggle" id="motion-toggle" aria-label="暂停背景动效" aria-pressed="false"><svg aria-hidden="true"><use href="#i-spark"/></svg></button></div>
+</header>
+<main id="explore-content" class="explore-main">
+ <div class="search-row"><div class="page-heading"><span class="eyebrow">SANZO / EXPLORE</span><h1>探索音乐<span>。</span></h1></div><div class="explore-search-slot"><form class="search-box glass" role="search" id="search-form"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="music-search" type="search" placeholder="搜索歌曲、创作者或风格" aria-label="搜索歌曲、创作者或风格" autocomplete="off"><span class="search-shortcut" aria-hidden="true">/</span></form></div><button class="collection-entry soft-button" id="collection-entry"><svg aria-hidden="true"><use href="#i-album"/></svg>我的收藏</button></div>
+ <div id="discover-view">
+  <section class="spotlight-row" id="spotlights" aria-label="本周精选"></section>
+  <section class="recommendations" aria-labelledby="recommend-title">
+   <div class="section-heading"><div><span class="eyebrow">ON REPEAT</span><h2 id="recommend-title">值得循环的声音</h2></div><p class="interaction-hint">单击播放 · 双击展开播放器</p></div>
+   <div class="filter-row"><div class="recommend-tabs glass" role="tablist" aria-label="推荐类型"><button role="tab" aria-selected="true" data-recommend="best">最佳歌曲</button><button role="tab" aria-selected="false" data-recommend="choice" tabindex="-1">用户选择</button><button role="tab" aria-selected="false" data-recommend="fresh" tabindex="-1">新鲜发现</button><button role="tab" aria-selected="false" data-recommend="following" tabindex="-1">正在关注</button></div><button class="text-button" id="reset-filters" hidden>清除筛选</button><span id="result-count" class="result-count"></span></div>
+   <div id="active-filter" class="active-filter" hidden></div><div id="song-grid" class="song-grid"></div><div id="results-empty" class="empty-state glass" hidden><svg aria-hidden="true"><use href="#i-search"/></svg><h3>还没有找到这段旋律</h3><p>试试其他关键词，或清除当前筛选。</p><button class="soft-button" data-reset>浏览所有作品</button></div>
+  </section>
+  <section id="genre-section" aria-labelledby="genre-title"><div class="section-heading"><div><span class="eyebrow">FIND YOUR FREQUENCY</span><h2 id="genre-title">此刻，想听什么？</h2></div><button class="text-button" id="all-genres">全部风格</button></div><div class="genre-grid" id="genre-grid"></div></section>
+  <section id="creator-section" aria-labelledby="creator-title"><div class="section-heading"><div><span class="eyebrow">PEOPLE BEHIND THE SOUND</span><h2 id="creator-title">值得关注的创作者</h2></div><span class="secondary-text">遇见一种新的声音</span></div><div id="creator-grid" class="creator-grid"></div></section>
+ </div>
+ <section id="collection-view" hidden aria-labelledby="collection-title"><div class="section-heading"><div><span class="eyebrow">YOUR PERSONAL COLLECTION</span><h2 id="collection-title">我的收藏</h2></div><div class="heading-actions"><a class="text-button" href="/create/#library">在 Library 编辑专辑</a><button class="soft-button" id="back-discover">返回探索</button></div></div><div id="album-filters" class="album-filters"></div><div id="collection-songs" class="song-grid"></div><div id="collection-empty" class="empty-state glass" hidden><h3>让喜欢的声音留下来</h3><p>收藏歌曲，或把它加入自己的专辑。</p><button class="soft-button" data-discover>去发现音乐</button></div></section>
+ <footer class="explore-footer"><span>SANZO · 为灵感而听</span><small>社区内容与热度为示例。演示音轨为合成纯音乐；评论、关注和收藏保存到你的账号。</small></footer>
+</main>
+<section class="player-dock glass listening-dock" id="player-dock" aria-label="底部音乐播放器"><div class="dock-leading"><div class="dock-identity"><button class="dock-track" data-open-player aria-label="展开专业播放器"><img id="dock-cover" src="/assets/liquid-glass.webp" alt="Afterglow 封面"><span><strong id="dock-title">Afterglow</strong><small id="dock-artist">NEON / 霓虹 · 演示音轨</small></span></button></div>
+<details class="player-lyrics" id="player-lyrics">
+      <summary aria-label="展开或收起歌词"><div class="lyric-copy"><div class="lyric-heading"><span id="lyric-mode">示例歌词</span><small id="lyric-counter">01 / 08</small></div><strong id="lyric-current">霓虹越过最后一道天际</strong><span id="lyric-next">晚风把心事吹成透明</span></div><span class="lyric-expand">歌词 <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 12 5-5 5 5"/></svg></span></summary>
+      <div class="lyrics-sheet glass"><div class="lyrics-sheet-heading"><div><small>LYRICS PREVIEW</small><h3 id="lyrics-track-title">Afterglow</h3></div><button type="button" class="icon-button" id="close-lyrics" aria-label="收起歌词"><svg><use href="#i-close"/></svg></button></div><p id="lyrics-note">演示音轨为器乐，以下为歌词界面预览。</p><div class="lyrics-lines" id="lyrics-lines" aria-label="完整歌词"></div></div>
+    </details></div>
+<div class="dock-center"><div class="transport"><button class="icon-button secondary-control" data-shuffle aria-label="随机播放" aria-pressed="false"><svg aria-hidden="true"><use href="#i-shuffle"/></svg></button><button class="icon-button" data-prev aria-label="上一首"><svg aria-hidden="true"><use href="#i-prev"/></svg></button><button class="play-button" data-toggle-play aria-label="播放"><svg aria-hidden="true"><use href="#i-play"/></svg></button><button class="icon-button" data-next aria-label="下一首"><svg aria-hidden="true"><use href="#i-next"/></svg></button><button class="icon-button secondary-control" data-repeat aria-label="单曲循环" aria-pressed="false"><svg aria-hidden="true"><use href="#i-repeat"/></svg></button></div></div><div class="dock-trailing"><div class="progress-row"><span data-elapsed>0:00</span><input type="range" class="progress" data-seek min="0" max="186" value="0" step="1" aria-label="底部播放进度"><span data-duration>3:06</span></div><div class="dock-tools"><button class="icon-button like-button" data-current-like aria-label="收藏当前歌曲" aria-pressed="false"><svg aria-hidden="true"><use href="#i-heart"/></svg></button><button class="icon-button" data-current-collect aria-label="收藏至专辑"><svg aria-hidden="true"><use href="#i-album"/></svg></button><button class="icon-button" data-open-queue aria-label="打开播放队列"><svg aria-hidden="true"><use href="#i-queue"/></svg></button><button class="icon-button mute-button" data-mute aria-label="静音"><svg aria-hidden="true"><use href="#i-volume"/></svg></button><input type="range" class="volume" data-volume min="0" max="100" value="55" aria-label="底部音量"><button class="icon-button" data-open-player aria-label="展开专业播放器"><svg aria-hidden="true"><use href="#i-expand"/></svg></button></div></div></section>
+<dialog class="immersive-player" id="immersive-player" aria-labelledby="immersive-title">
+  <div class="player-wash" aria-hidden="true"><img id="player-wash-art" src="/assets/liquid-glass.webp" alt=""></div>
+  <header class="immersive-header">
+    <div class="player-brand"><svg aria-hidden="true"><use href="#i-spark"/></svg><span>SANZO<small>THE LISTENING ROOM</small></span></div>
+    <span class="player-focus-title" id="focus-track-title">Afterglow</span>
+    <span class="demo-label">器乐演示</span>
+    <button class="player-focus" id="player-focus" aria-pressed="false"><svg aria-hidden="true"><use href="#i-expand"/></svg><span id="focus-label">专注歌词</span></button>
+    <button class="icon-button" id="close-player" aria-label="收起专业播放器"><svg aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="immersive-body">
+    <div class="immersive-art-column">
+      <div class="immersive-art" id="immersive-art"><img id="immersive-cover" src="/assets/liquid-glass.webp" alt="Afterglow 封面"><div class="cover-lettering"><small>SANZO / ORIGINAL DEMO</small><span id="immersive-caption">AFTER<br>GLOW</span></div><span class="art-edge" aria-hidden="true"></span></div>
+      <div class="listening-state"><span class="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span id="listening-status">准备播放</span><small>INSTRUMENTAL DEMO</small></div>
+      <div class="immersive-title-row"><h2 id="immersive-title">Afterglow</h2><button class="icon-button like-button" data-current-like aria-label="收藏当前歌曲" aria-pressed="false" title="收藏歌曲"><svg aria-hidden="true"><use href="#i-heart"/></svg></button></div>
+      <div id="player-creator" class="player-creator"></div>
+      <div id="player-style" class="player-style" aria-label="歌曲风格"></div>
+      <div class="player-actions">
+        <button class="player-action album-action" data-current-collect><svg aria-hidden="true"><use href="#i-plus"/></svg><span>添加到专辑<small id="player-album-status">选择或新建专辑</small></span></button>
+        <button class="player-action" id="download-song"><svg aria-hidden="true"><use href="#i-download"/></svg><span><span id="song-download-label">下载歌曲</span><small>WAV · 演示音频</small></span></button>
+        <button class="player-action" id="download-lyrics"><svg aria-hidden="true"><use href="#i-download"/></svg><span>下载歌词<small>LRC · 带时间标记</small></span></button>
+      </div>
+    </div>
+    <div class="immersive-detail">
+      <div class="player-tabs" role="tablist" aria-label="播放器内容">
+        <button id="player-tab-lyrics" role="tab" aria-selected="true" aria-controls="player-lyrics-view" data-player-tab="lyrics">歌词</button>
+        <button id="player-tab-about" role="tab" aria-selected="false" aria-controls="player-about" tabindex="-1" data-player-tab="about">作品</button>
+        <button id="player-tab-comments" role="tab" aria-selected="false" aria-controls="player-comments" tabindex="-1" data-player-tab="comments">评论 <span id="comment-count"></span></button>
+        <button id="player-tab-queue" role="tab" aria-selected="false" aria-controls="player-queue" tabindex="-1" data-player-tab="queue">待播队列</button>
+      </div>
+      <div class="player-pane" id="player-lyrics-view" role="tabpanel" aria-labelledby="player-tab-lyrics">
+        <div class="lyrics-topline"><span><svg aria-hidden="true"><use href="#i-spark"/></svg><span id="immersive-lyrics-label">示例歌词</span></span><button class="lyrics-follow" id="lyrics-follow" aria-pressed="true">自动跟随</button><span id="immersive-line-count">01 / 32</span></div>
+        <div id="immersive-lyrics-scroll" class="immersive-lyrics-scroll">
+          <div id="immersive-lyric-lines" class="immersive-lyric-lines"></div>
+          <div id="immersive-lyrics-empty" class="immersive-lyrics-empty" hidden><svg aria-hidden="true"><use href="#i-album"/></svg><small>INSTRUMENTAL</small><h3>让旋律替你表达。</h3><p id="lyrics-empty-track"></p></div>
+        </div>
+        <p id="immersive-lyrics-note" class="immersive-lyrics-note"></p>
+      </div>
+      <div class="player-pane" id="player-about" role="tabpanel" aria-labelledby="player-tab-about" hidden></div>
+      <div class="player-pane" id="player-comments" role="tabpanel" aria-labelledby="player-tab-comments" hidden>
+        <div id="comment-list" class="comment-list"></div>
+        <form id="comment-form" class="comment-form"><label for="comment-input">留下你的听后感</label><textarea id="comment-input" placeholder="这首歌，让你想起了什么？" rows="2" maxlength="500" required></textarea><div><small>仅保存在当前浏览器</small><button class="primary-button" type="submit">发表评论</button></div></form>
+      </div>
+      <div class="player-pane" id="player-queue" role="tabpanel" aria-labelledby="player-tab-queue" hidden><div class="queue-heading"><span id="queue-count"></span><small>点击切换歌曲</small></div><div id="queue-list"></div></div>
+    </div>
+  </div>
+  <footer class="immersive-controls">
+    <div class="progress-row"><span data-elapsed>0:00</span><input type="range" class="progress" data-seek min="0" max="186" value="0" step="1" aria-label="专业播放器播放进度"><span data-duration>3:06</span></div>
+    <div class="immersive-transport">
+      <div class="immersive-extra"><button class="soft-button" data-current-collect><svg aria-hidden="true"><use href="#i-plus"/></svg>添加到专辑</button></div>
+      <div class="transport"><button class="icon-button" data-shuffle aria-label="随机播放" aria-pressed="false"><svg aria-hidden="true"><use href="#i-shuffle"/></svg></button><button class="icon-button" data-prev aria-label="上一首"><svg aria-hidden="true"><use href="#i-prev"/></svg></button><button class="play-button" data-toggle-play aria-label="播放"><svg aria-hidden="true"><use href="#i-play"/></svg></button><button class="icon-button" data-next aria-label="下一首"><svg aria-hidden="true"><use href="#i-next"/></svg></button><button class="icon-button" data-repeat aria-label="单曲循环" aria-pressed="false"><svg aria-hidden="true"><use href="#i-repeat"/></svg></button></div>
+      <div class="immersive-volume"><button class="icon-button mute-button" data-mute aria-label="静音"><svg aria-hidden="true"><use href="#i-volume"/></svg></button><input type="range" class="volume" data-volume min="0" max="100" value="55" aria-label="专业播放器音量"></div>
+    </div>
+  </footer>
+</dialog>
+<dialog class="album-dialog glass" id="album-dialog" aria-labelledby="album-dialog-title">
+ <div class="dialog-heading"><div><span class="eyebrow">YOUR ALBUMS</span><h2 id="album-dialog-title">添加到专辑</h2></div><button class="icon-button" id="close-album" aria-label="关闭专辑选择"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div>
+ <p id="collect-song-name" class="secondary-text"></p>
+ <div id="album-empty" class="album-empty" hidden><svg aria-hidden="true"><use href="#i-album"/></svg><h3>第一张专辑，从这首歌开始。</h3><p>取一个名字，创建后会立即加入当前歌曲。</p></div>
+ <div id="album-choices" class="album-choices"></div>
+ <form class="new-album-form" id="new-album-form"><label for="new-album-name">快速新建专辑</label><div><input id="new-album-name" placeholder="例如：我的深夜电台" maxlength="60" required><button class="soft-button" type="submit"><svg aria-hidden="true"><use href="#i-plus"/></svg>创建并添加</button></div></form>
+ <div class="dialog-footer"><small>保存在当前浏览器，与 Library 同步</small><button class="primary-button" id="save-collection">保存专辑选择</button></div>
+</dialog>
+<div id="toast" class="toast glass" role="status" aria-live="polite"></div>
+</body></html>

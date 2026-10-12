@@ -1,0 +1,17 @@
+/* Both song modes share the same writing surfaces and music controls. */
+#songs-fields [hidden]{display:none!important}
+#songs-fields #song-description,#songs-fields #lyrics{height:204px;min-height:140px;font-size:14px;line-height:1.8}
+.simple-input-caption{display:flex;justify-content:space-between;align-items:start;gap:12px;margin:10px 0 0;color:var(--muted)}
+.simple-input-caption p{margin:0;font-size:12px;line-height:1.7}
+.simple-input-caption>span{font-size:11px;line-height:1.9;white-space:nowrap;opacity:.8}
+.simple-instrumental-row{margin-bottom:0;border-bottom:0;padding-bottom:8px}
+.simple-background-row{padding-top:8px}
+.vocal-gender-row{margin-bottom:22px}
+.vocal-gender-row select:disabled{opacity:.5;cursor:not-allowed}
+.simple-background-row .switch input:disabled+span{opacity:.5;cursor:not-allowed}
+.song-model-options{margin-bottom:20px;padding-bottom:2px;border-bottom:1px solid #accfff24}
+.song-model-options .field-help{margin:0 0 18px;font-size:12px;line-height:1.7;color:var(--muted)}
+.song-model-options label{display:block;margin-bottom:10px}
+.song-model-options select{margin-bottom:18px}
+#song-advanced-options summary small{font-size:11px;color:var(--muted)}
+#song-rvc-model:disabled{opacity:.5;cursor:not-allowed}

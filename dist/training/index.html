@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+ <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#dce9f6">
+ <meta name="description" content="SANZO 模型训练：管理音色与曲风素材，预览 RVC 和 YUE2 LoRA 训练流程。"><title>SANZO · 模型训练</title>
+ <script src="/workspace-theme.js"></script>
+ <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b162a'/%3E%3Cpath d='M7 19v-6m6 12V7m6 15V10m6 9v-6' stroke='%23ff914d' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+ <link rel="stylesheet" href="/explore.css"><link rel="stylesheet" href="/site-shell.css"><link rel="stylesheet" href="/listening-dock.css"><link rel="stylesheet" href="/training.css">
+ <script type="module" src="/site-shell.js"></script><script type="module" src="/training-page.js"></script>
+</head>
+<body class="app-shell training-shell" data-page="training">
+<a class="skip-link" href="#training-content">跳到模型训练</a>
+<svg class="icon-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+ <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+ <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.2A9 9 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"/></symbol>
+ <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></symbol>
+ <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/></symbol>
+ <symbol id="i-voice" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M8 22h8"/></symbol>
+ <symbol id="i-style" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13M9 8l12-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="18" cy="16" rx="3" ry="3"/></symbol>
+ <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></symbol>
+ <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+ <symbol id="i-prev" viewBox="0 0 24 24"><path d="M5 5v14m14-14-10 7 10 7Z"/></symbol>
+ <symbol id="i-next" viewBox="0 0 24 24"><path d="M19 5v14M5 5l10 7-10 7Z"/></symbol>
+ <symbol id="i-volume" viewBox="0 0 24 24"><path d="m11 5-6 4H2v6h3l6 4Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+ <symbol id="i-muted" viewBox="0 0 24 24"><path d="m11 5-6 4H2v6h3l6 4Zm5 4 6 6m0-6-6 6"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+ <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+ <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+ <symbol id="i-model" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5"/></symbol>
+ <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+ <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+</defs></svg>
+<canvas id="workspace-particles" aria-hidden="true"></canvas><div class="page-aura" aria-hidden="true"></div>
+<aside class="app-sidebar" id="app-sidebar" aria-label="页面导航"></aside>
+<header class="explore-header glass"><div class="shell-breadcrumb"><a href="/">首页</a><span>/</span><strong>模型训练</strong></div><div class="header-tools"><button class="theme-toggle" id="theme-toggle"><svg aria-hidden="true"><use id="theme-icon" href="#i-sun"/></svg><span id="theme-label">浅色</span></button><button class="icon-button motion-toggle" id="motion-toggle" aria-label="暂停背景动效" aria-pressed="false"><svg aria-hidden="true"><use href="#i-spark"/></svg></button></div></header>
+<main id="training-content" class="training-main" hidden>
+ <div class="training-heading"><div><span class="lab-eyebrow">SANZO / MODEL LAB</span><h1>训练你的声音。</h1><p>留下音色的辨识度，延续曲风的表达。</p></div><span class="prototype-pill">原型演示</span></div>
+ <div class="lab-navigation"><div class="lab-tabs glass" role="tablist" aria-label="训练工作区"><button role="tab" id="tab-assets" aria-controls="assets-view" aria-selected="true" data-view="assets">音频素材 <span id="assets-count"></span></button><button role="tab" id="tab-tasks" aria-controls="tasks-view" aria-selected="false" tabindex="-1" data-view="tasks">训练任务 <span id="tasks-count"></span></button><button role="tab" id="tab-models" aria-controls="models-view" aria-selected="false" tabindex="-1" data-view="models">我的模型 <span id="models-count"></span></button></div><span class="local-note">云端素材 · 演示训练</span></div>
+ <section id="assets-view" role="tabpanel" aria-labelledby="tab-assets">
+  <div class="lab-grid">
+   <div class="materials-column">
+    <div class="dataset-types" role="group" aria-label="选择素材类型"><button class="dataset-card glass" data-kind="voice" aria-pressed="true"><span class="dataset-icon"><svg aria-hidden="true"><use href="#i-voice"/></svg></span><span><strong>音色素材</strong><small>单人干声 / RVC</small></span><span class="dataset-count" id="voice-count">04</span></button><button class="dataset-card glass" data-kind="style" aria-pressed="false"><span class="dataset-icon"><svg aria-hidden="true"><use href="#i-style"/></svg></span><span><strong>曲风素材</strong><small>音乐片段 / YUE2 LoRA</small></span><span class="dataset-count" id="style-count">04</span></button></div>
+    <div class="material-panel glass">
+     <div class="material-heading"><div><span class="lab-eyebrow">YOUR AUDIO</span><h2 id="material-title">音色素材</h2></div><button class="lab-button upload-button" id="upload-button"><svg aria-hidden="true"><use href="#i-upload"/></svg>上传音频</button></div>
+     <input id="file-picker" type="file" accept=".wav,.mp3,.flac,.m4a,.ogg,audio/*" multiple hidden>
+     <button class="upload-zone" id="upload-zone"><span class="upload-orbit"><svg aria-hidden="true"><use href="#i-upload"/></svg></span><span><strong>把声音放进这里。</strong><small>拖放音频，或点击选择 · WAV / MP3 / FLAC / M4A / OGG</small></span></button>
+     <div class="material-toolbar"><label class="lab-search"><svg aria-hidden="true"><use href="#i-search"/></svg><input id="asset-search" type="search" placeholder="搜索素材名称" aria-label="搜索素材名称"></label><select id="asset-source" aria-label="筛选素材来源"><option value="all">全部素材</option><option value="uploaded">我的上传</option><option value="demo">示例素材</option><option value="removed">最近移除</option></select></div>
+     <div class="selection-toolbar"><label><input type="checkbox" id="select-all">全选</label><span id="selection-count"></span><button class="text-button" id="prepare-assets">整理所选</button><button class="text-button" id="move-assets">移至曲风</button></div>
+     <div id="asset-list" class="asset-list"></div><div id="asset-empty" class="lab-empty" hidden><svg aria-hidden="true"><use href="#i-upload"/></svg><h3>给这个数据集一个开始。</h3><p>上传音频，或切回全部素材体验示例。</p></div>
+     <div class="dataset-footer"><span id="dataset-summary"></span><small>素材保存在你的云端空间</small></div>
+    </div>
+   </div>
+   <aside class="trainer-panel glass" aria-labelledby="trainer-title">
+    <div class="trainer-heading"><span class="trainer-icon"><svg aria-hidden="true"><use id="trainer-icon" href="#i-voice"/></svg></span><div><span class="lab-eyebrow">TRAINING RECIPE</span><h2 id="trainer-title">RVC 音色模型</h2></div><span class="version-pill" id="base-model">v2</span></div>
+    <p class="trainer-description" id="trainer-description">用清晰、音色一致的单人干声，建立属于你的声音。</p>
+    <div class="recipe-steps"><span class="active">01 选素材</span><i></i><span>02 配置</span><i></i><span>03 训练</span></div>
+    <form id="training-form">
+     <label for="model-name">模型名称</label><input id="model-name" value="My Voice · v1" maxlength="60" required>
+     <div class="selected-summary"><svg aria-hidden="true"><use href="#i-check"/></svg><span><strong id="recipe-selection"></strong><small id="recipe-duration"></small></span></div>
+     <label>训练方案</label><div class="recipe-presets" role="group" aria-label="训练方案"><button type="button" data-preset="light" aria-pressed="false">轻量试训</button><button type="button" data-preset="standard" aria-pressed="true">标准训练</button><button type="button" data-preset="detail" aria-pressed="false">精细训练</button></div>
+     <details class="advanced-settings"><summary>高级参数<span>按需调整</span></summary><div class="settings-grid"><label><span id="iteration-label">训练轮数</span><input id="iterations" type="number" value="120" min="1" max="100000" required></label><label id="rank-field" hidden>LoRA Rank<select id="lora-rank"><option>8</option><option selected>16</option><option>32</option><option>64</option></select></label><label id="pitch-field">音高提取<select id="pitch-method"><option>RMVPE</option><option>CREPE</option></select></label><label>批次大小<select id="batch-size"><option>2</option><option selected>4</option><option>8</option></select></label></div><small>参数用于流程预览，实际训练配置后续接入。</small></details>
+     <button class="train-button" id="start-training" type="submit"><svg aria-hidden="true"><use href="#i-spark"/></svg>开始训练演示</button><p class="training-note">不占用 GPU，不执行真实训练。</p>
+    </form>
+    <a id="model-reference" class="model-reference" href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI" target="_blank" rel="noopener noreferrer">查看模型资料</a>
+   </aside>
+  </div>
+ </section>
+ <section id="tasks-view" role="tabpanel" aria-labelledby="tab-tasks" hidden><div class="view-heading"><div><span class="lab-eyebrow">FROM DATA TO SOUND</span><h2>每一步，都看得见。</h2><p>整理素材、训练、导出模型的演示流程。</p></div><button class="lab-button" data-back-assets>新建训练任务</button></div><div id="task-list" class="task-list"></div></section>
+ <section id="models-view" role="tabpanel" aria-labelledby="tab-models" hidden><div class="view-heading"><div><span class="lab-eyebrow">YOUR PERSONAL MODELS</span><h2>声音的另一种形状。</h2><p>音色模型和曲风 LoRA，在这里归档。</p></div><button class="lab-button" data-back-assets>训练新模型</button></div><div class="model-filters" role="group" aria-label="筛选模型"><button data-model-filter="all" aria-pressed="true">全部模型</button><button data-model-filter="voice" aria-pressed="false">RVC 音色</button><button data-model-filter="style" aria-pressed="false">YUE2 曲风 LoRA</button></div><div id="model-list" class="model-grid"></div><div id="models-empty" class="lab-empty" hidden><h3>你的下一种声音，还在路上。</h3><p>完成一个演示训练任务，模型会出现在这里。</p></div></section>
+ <footer class="training-footer">SANZO / MODEL LAB<span>音频与配置保存到云端；训练任务与模型仍为原型演示。</span></footer>
+</main>
+<section class="player-dock glass listening-dock training-player" id="training-player" aria-label="音频素材播放器">
+ <div class="dock-leading"><div class="dock-identity"><div class="dock-track"><span class="material-art"><svg aria-hidden="true"><use id="material-art-icon" href="#i-voice"/></svg></span><span><strong id="material-player-title">选择一段素材</strong><small id="material-player-source">点击素材即可试听</small></span></div></div>
+ <div class="dock-material"><strong id="material-player-kind">音色 / 曲风</strong><small id="material-player-note">让每一段声音，都听得清楚。</small></div></div>
+ <div class="dock-center"><div class="transport"><button class="icon-button" id="material-prev" aria-label="上一段素材" disabled><svg aria-hidden="true"><use href="#i-prev"/></svg></button><button class="play-button" id="material-play" aria-label="播放素材" disabled><svg aria-hidden="true"><use href="#i-play"/></svg></button><button class="icon-button" id="material-next" data-next aria-label="下一段素材" disabled><svg aria-hidden="true"><use href="#i-next"/></svg></button></div></div>
+ <div class="dock-trailing"><div class="progress-row"><span id="material-elapsed">0:00</span><input class="progress" id="material-seek" type="range" min="0" max="1000" value="0" aria-label="素材播放进度" disabled><span id="material-duration">0:00</span></div><div class="dock-tools"><button class="icon-button" id="material-detail" aria-label="当前素材详情" disabled><svg aria-hidden="true"><use href="#i-info"/></svg></button><button class="icon-button" id="material-mute" aria-label="静音" aria-pressed="false"><svg aria-hidden="true"><use href="#i-volume"/></svg></button><input class="volume" id="material-volume" type="range" min="0" max="100" value="55" aria-label="素材播放音量"></div></div>
+</section>
+<dialog id="asset-dialog" class="lab-dialog" aria-labelledby="asset-dialog-title"><div class="dialog-heading"><h2 id="asset-dialog-title">音频详情</h2><button class="icon-button" data-close="asset-dialog" aria-label="关闭音频详情"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div><div id="asset-detail"></div><button class="lab-button" id="asset-detail-play"><svg aria-hidden="true"><use href="#i-play"/></svg>在播放栏试听</button><form id="rename-form"><label for="asset-name">素材名称</label><input id="asset-name" maxlength="120" required><button class="lab-button" type="submit">保存名称</button></form></dialog>
+<dialog id="prepare-dialog" class="lab-dialog" aria-labelledby="prepare-title"><div class="dialog-heading"><h2 id="prepare-title">素材整理演示</h2><button class="icon-button" data-close="prepare-dialog" aria-label="关闭素材整理"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div><p id="prepare-summary"></p><div class="prepare-options"><label><input type="checkbox" checked>裁切静音与过长片段</label><label><input type="checkbox" checked>统一采样率与响度</label><label><input type="checkbox" checked><span id="prepare-type">分离人声、提取音高</span></label></div><p class="dialog-note">这里演示处理步骤，音频处理能力后续接入。</p><button class="train-button" id="confirm-prepare">完成整理演示</button></dialog>
+<dialog id="model-dialog" class="lab-dialog" aria-labelledby="model-dialog-title"><div class="dialog-heading"><h2 id="model-dialog-title">模型详情</h2><button class="icon-button" data-close="model-dialog" aria-label="关闭模型详情"><svg aria-hidden="true"><use href="#i-close"/></svg></button></div><div id="model-detail"></div><button class="lab-button" id="export-config"><svg aria-hidden="true"><use href="#i-download"/></svg>导出训练配置</button></dialog>
+<div class="training-toast glass" id="training-toast" role="status" aria-live="polite"><span id="toast-message"></span><button id="undo-remove" hidden>撤销</button></div>
+</body></html>

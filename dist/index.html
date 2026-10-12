@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050a12"><meta name="description" content="一个念头，一首属于你的音乐。走进 SANZO，探索声音，让想象成为音乐。">
+<title>SANZO · 让想象成为声音</title>
+<link rel="preload" as="image" href="/assets/hero-poster.jpg" fetchpriority="high">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b162a'/%3E%3Cpath d='M7 19v-6m6 12V7m6 15V10m6 9v-6' stroke='%23ff914d' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/home.css"><link rel="stylesheet" href="/ai-assistant.css"><script type="module" src="/home.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
+<header class="site-header" id="site-header"><a class="brand" href="/" aria-label="SANZO 首页"><span class="brand-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SANZO</span></a><nav aria-label="首页导航"><a class="home-nav-entry" href="/explore/">探索音乐</a><a class="home-nav-entry" href="/create/" aria-label="进入创作空间">创作空间</a><a class="home-nav-entry" href="/studio/" aria-label="进入 Studio">Studio</a><a class="home-nav-entry" href="/training/">模型训练</a></nav><div class="home-search-slot"><form class="home-search" action="/explore/" method="get" role="search"><input type="search" name="q" aria-label="搜索音乐" placeholder="搜索歌曲、创作者" maxlength="120" autocomplete="off"><button type="submit" aria-label="搜索音乐作品"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button></form></div></header>
+<main id="main-content">
+<section class="cinema-hero" aria-labelledby="hero-title">
+<div class="hero-poster" aria-hidden="true"></div><video id="hero-video" class="hero-video" poster="/assets/hero-poster.jpg" muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><div class="hero-shade" aria-hidden="true"></div><div class="hero-grain" aria-hidden="true"></div>
+<div class="hero-copy">
+  <p class="hero-eyebrow"><span class="eyebrow-line"></span> AI MUSIC. HUMAN IMAGINATION.</p>
+  <h1 id="hero-title">让想象，<br>成为<span>声音。</span></h1>
+  <p class="hero-description">简单描述一下，剩下的交给 AI。</p>
+  <div class="quick-create">
+    <div class="creator-entry-row">
+    <div class="prompt-composer-slot">
+    <form class="prompt-composer" id="home-create-form" aria-label="首页歌曲创作">
+      <label class="visually-hidden" for="song-prompt">描述你想创作的歌曲</label>
+      <textarea id="song-prompt" name="prompt" rows="2" maxlength="500" required placeholder="你想听见怎样的一首歌？描述心情、故事或风格…" aria-describedby="composer-hint"></textarea>
+      <div class="composer-bottom"><span id="composer-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></svg>AI 为你构思歌词与曲风</span><div class="home-ai-tools"><button class="home-ai-polish" id="home-polish" type="button" data-ai-action aria-label="AI 润色，生成分段歌词与曲风"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4Z"/></svg><span>AI 润色</span></button><button class="button button-primary generate-song" type="submit" data-ai-action>生成歌曲<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button></div></div>
+    </form>
+    </div>
+    <button class="home-brief-ready" id="home-brief-ready" type="button" hidden><span class="brief-ready-mark" aria-hidden="true">✓</span><span><strong>歌词与曲风已就绪</strong><small id="home-brief-summary"></small></span><span class="brief-ready-action">查看与修改</span></button>
+    <nav class="home-destinations" aria-label="开始探索与创作">
+    <a class="studio-entry" href="/explore/" aria-label="探索音乐世界">
+      <span class="studio-entry-top"><span class="studio-entry-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5Z"/></svg></span><svg class="studio-entry-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>
+      <span class="studio-entry-copy"><span class="studio-entry-title">探索音乐世界</span><span class="studio-entry-description">好音乐 · 创作者 · 新灵感</span></span>
+    </a>
+    <a class="studio-entry" href="/create/" aria-label="进入创作空间">
+      <span class="studio-entry-top"><span class="studio-entry-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 14v-4m4 8V6m6 14V4m4 11V9"/></svg></span><svg class="studio-entry-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></span>
+      <span class="studio-entry-copy"><span class="studio-entry-title">进入创作空间</span><span class="studio-entry-description">歌词 · 风格 · 我的作品</span></span>
+    </a>
+    </nav>
+    </div>
+    <div class="prompt-templates" aria-label="歌曲灵感模板"><span class="template-label">试试灵感</span><div class="template-options"><button type="button" data-template="night" aria-pressed="false"><i aria-hidden="true"></i>午夜驾车</button><button type="button" data-template="rain" aria-pressed="false"><i aria-hidden="true"></i>雨天咖啡</button><button type="button" data-template="love" aria-pressed="false"><i aria-hidden="true"></i>心动告白</button><button type="button" data-template="space" aria-pressed="false"><i aria-hidden="true"></i>星际漫游</button></div></div>
+  </div>
+</div>
+<div class="hero-bottom"><div class="film-credit"><span class="film-number">01</span><div><span>THE SHAPE OF SOUND</span><small>灵感，流动成声。</small></div></div><a class="scroll-cue" href="#how-it-works" aria-label="了解创作方式"><span>向下探索</span><i aria-hidden="true"></i></a><div class="film-controls"><button id="watch-film" class="watch-film" aria-label="观看品牌短片" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 10 7-10 7Z"/></svg><span>观看短片</span></button><button id="toggle-video" class="video-toggle" aria-label="播放背景视频" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 10 7-10 7Z"/></svg></button></div></div>
+</section>
+<section class="creation-intro" id="how-it-works" aria-labelledby="intro-title"><div class="intro-heading reveal"><p class="section-eyebrow">FROM A THOUGHT TO A TRACK</p><h2 id="intro-title">音乐，从一个念头开始。</h2><p>无需懂乐理。<br>写下脑海中的画面，找到你想听见的声音。</p></div><div class="creation-steps"><article class="step reveal"><span class="step-number">01 / IMAGINE</span><div class="step-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 4 3.2 8.8L28 16l-8.8 3.2L16 28l-3.2-8.8L4 16l8.8-3.2Z"/></svg></div><h3>写下你的灵感</h3><p>一个画面、一种心情，<br>或者一句想唱出来的歌词。</p></article><article class="step reveal"><span class="step-number">02 / SHAPE</span><div class="step-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 5v22M16 5v22M24 5v22"/><circle cx="8" cy="12" r="3"/><circle cx="16" cy="22" r="3"/><circle cx="24" cy="10" r="3"/></svg></div><h3>找到你的风格</h3><p>从温暖的 Lo-fi 到梦幻电子，<br>让音乐靠近你的想象。</p></article><article class="step reveal"><span class="step-number">03 / LISTEN</span><div class="step-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 19v-5a11 11 0 0 1 22 0v5"/><rect x="4" y="17" width="6" height="11" rx="3"/><rect x="22" y="17" width="6" height="11" rx="3"/></svg></div><h3>听见新的可能</h3><p>试听、收藏，留住心动的旋律。<br>下一次灵感，随时再开始。</p></article></div></section>
+<section class="closing-section reveal"><p class="section-eyebrow">MADE FOR YOUR IMAGINATION</p><h2>下一首，<span>由你开始。</span></h2><a class="button button-primary" href="/create/">进入创作空间</a><p class="closing-note">给灵感一个声音。</p></section>
+</main>
+<footer class="site-footer"><a class="brand footer-brand" href="/" aria-label="SANZO 首页"><span class="brand-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SANZO</span></a><span>音乐，拥有无限形状。</span><small>© 2026 SANZO · 音乐创作原型</small></footer>
+<dialog class="film-dialog" id="film-dialog" aria-label="SANZO 品牌短片"><div class="film-dialog-header"><span>SANZO / THE SHAPE OF SOUND</span><button id="close-film" aria-label="关闭短片"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div><video id="full-film" poster="/assets/hero-poster.jpg" controls playsinline preload="none" aria-label="蓝橙液态玻璃品牌短片"></video><p>THE SHAPE OF SOUND · 灵感，流动成声。</p></dialog>
+<dialog class="home-brief-dialog" id="home-brief-dialog" aria-labelledby="home-brief-heading">
+  <form id="home-brief-form">
+    <header class="brief-dialog-header"><div><p>YOUR SONG, TAKING SHAPE</p><h2 id="home-brief-heading">让灵感，有了韵脚。</h2><span>AI 已写好歌词与曲风，你可以继续修改。</span></div><button class="brief-dialog-close" id="close-home-brief" type="button" aria-label="关闭歌词预览"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></header>
+    <div class="brief-dialog-body">
+      <section class="brief-lyrics-section"><div class="brief-field-heading"><label for="home-brief-lyrics">歌曲歌词</label><span>主歌 · 副歌 · 桥段</span></div><textarea id="home-brief-lyrics" maxlength="5000" required spellcheck="false" aria-describedby="brief-lyrics-hint"></textarea><p id="brief-lyrics-hint">方括号内是歌曲段落，下一行是唱出来的歌词。</p></section>
+      <aside class="brief-song-details"><label for="home-brief-title">歌曲名称</label><input id="home-brief-title" maxlength="60" required autocomplete="off"><div class="brief-field-heading"><label for="home-brief-styles">音乐风格</label><button type="button" id="home-clear-style" aria-label="清空风格提示词" title="清空风格提示词"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg></button></div><textarea id="home-brief-styles" maxlength="1000" required spellcheck="false"></textarea><p>风格、节奏、乐器与人声，将与歌词一起带入创作空间。</p><div class="brief-original"><span>最初的灵感</span><p id="home-brief-original"></p></div></aside>
+    </div>
+    <footer class="brief-dialog-footer"><span>歌词已生成，音频将在创作空间中制作。</span><div><button class="brief-secondary" id="keep-home-brief" type="button">留在首页</button><button class="button button-primary" type="submit">使用这份歌词</button></div></footer>
+  </form>
+</dialog>
+
+</body></html>
