@@ -6,7 +6,8 @@ export const MUSIC_PROVIDERS=Object.freeze({
 export const MUSIC_WORKFLOWS=Object.freeze({
  'yue2-cover':{apps:{cn:'2101611194623807489',ai:'2101611337957187585'},outputNode:'7',outputFormat:'mp3'},
  'cover-inference':{apps:{cn:'2107851228599382017',ai:'2107851452228509697'},textOnly:true,abcNode:'31',lyricsNode:'34',timestampsNode:'40',nodes:{sourceAudio:['30','audio']}},
- 'seedvc-speech':{apps:{cn:'2108209006111182850',ai:'2045880827887751169'},outputNode:'30',outputFormat:'mp3',nodes:{sourceAudio:['18','audio'],referenceAudio:['2','audio']}},
+ 'seedvc-speech':{apps:{cn:'2108209006111182850',ai:'2045880827887751169'},outputNode:'30',outputFormat:'mp3',nodes:{sourceAudio:['18','audio'],referenceAudio:['2','audio']},fixedNodes:[{nodeId:'14',fieldName:'f0_condition',fieldValue:false},{nodeId:'14',fieldName:'auto_f0_adjust',fieldValue:true},{nodeId:'14',fieldName:'pitch_shift',fieldValue:0}]},
+ 'seedvc-song':{apps:{cn:'2108209006111182850',ai:'2045880827887751169'},outputNode:'30',outputFormat:'mp3',nodes:{sourceAudio:['18','audio'],referenceAudio:['2','audio']},fixedNodes:[{nodeId:'14',fieldName:'f0_condition',fieldValue:true},{nodeId:'14',fieldName:'auto_f0_adjust',fieldValue:false},{nodeId:'14',fieldName:'pitch_shift',fieldValue:0}]},
  'index-voice-clone':{apps:{cn:'2107769776520122369',ai:'2088285539253633025'},outputNode:'18',nodes:{speechText:['17','text'],referenceAudio:['16','audio']}},
  'qwen-voice-clone':{apps:{cn:'2107755708744818689',ai:'2107755813385740290'},outputNode:'9',nodes:{speechText:['6','text'],referenceAudio:['4','audio']}},
  'qwen-voice-design':{apps:{cn:'2091093839124717570',ai:'2045683032845197314'},outputNode:'17',nodes:{speechText:['15','text'],voiceDescription:['16','text']}},

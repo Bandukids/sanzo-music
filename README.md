@@ -8,10 +8,10 @@ SANZO 是一个音乐创作、语音生成和歌曲再创作网站。当前版�
 - **ABC**：YUE2 生成 ABC 乐谱和歌曲；导入 ABC、本地简单合成、五线谱和简谱预览、乐谱下载。
 - **Speech**：Qwen 音色设计与音色克隆、Index TTS 情绪表达；预设音色和个人语音素材管理。
 - **Studio Cover**：解析原曲歌词与 ABC，修改歌词、语言和风格后翻唱，复用已解析的旋律；自动曲名、自动封面、底部播放器、双击播放、拖入统一回收站及 MP3 下载。
-- **Studio Speech**：SeedVC 零样本语音变声。
+- **Studio SeedVC**：Speech 语音和 Songs 歌曲零样本变声；选择预设或个人音色，歌曲保留原音高和伴奏，输出 MP3。
 - **作品与素材**：歌曲、语音和 ABC 工作区，统一管理上传和生成的音乐、语音及 ABC，跨页面同步回收站、恢复与一键清空；专辑管理、单曲发布；封面自动生成、重做、上传和下载。
 
-Sounds / Woosh 和模型训练目前暂未开放。部分 Studio 歌曲变声入口仍为原型，以页面提示为准。
+Sounds / Woosh 和模型训练目前暂未开放。Studio 的 Cover、Speech 和 Songs 均已接入对应工作流。
 
 ## 本地运行
 
@@ -59,6 +59,7 @@ npm run preview
 - [RunningHub 接入与任务调度](RUNNINGHUB.md)
 - [单曲与专辑封面](COVERS.md)
 - [Studio 翻唱](docs/studio-cover.md)
+- [Studio 语音与歌曲变声](docs/studio-seedvc.md)
 - [统一素材管理与回收站](docs/material-management.md)
 - [歌词解析与结构整理](docs/cover-lyrics.md)
 - [界面性能说明](PERFORMANCE.md)

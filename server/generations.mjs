@@ -20,7 +20,7 @@ export function musicInput(body) {
  if(!body||typeof body!=='object')throw invalid('请输入有效创作内容。');
  if(!WOOSH_AVAILABLE&&(body.type==='sounds'||['woosh-flow','woosh-vflow'].includes(body.model)))throw invalid('Woosh 音效生成暂不可用，请稍后再试。');
  if(typeof body.model!=='string'||!Object.hasOwn(MUSIC_WORKFLOWS,body.model))throw invalid('请选择已接入的 ACE-Step-V15-XL、MiniMax-Music-3 或 YUE2。');
- if(body.model==='seedvc-speech')return seedVCInput(body);
+ if(['seedvc-speech','seedvc-song'].includes(body.model))return seedVCInput(body);
  if(body.model==='cover-inference')return coverInferenceInput(body);
  if(body.model==='yue2-cover')return studioCoverInput(body);
  if(['qwen-voice-clone','index-voice-clone'].includes(body.model))return speechCloneInput(body);
@@ -46,7 +46,7 @@ export function musicInput(body) {
 export function nodeInfoList(input) {
  if(input.model==='yue2-cover')return studioCoverNodes(input);
  const workflow=MUSIC_WORKFLOWS[input.model];
- if(['seedvc-speech','cover-inference'].includes(input.model))return Object.entries(workflow.nodes).map(([field,[nodeId,fieldName]])=>({nodeId,fieldName,fieldValue:input[field]}));
+ if(['seedvc-speech','seedvc-song','cover-inference'].includes(input.model))return [...Object.entries(workflow.nodes).map(([field,[nodeId,fieldName]])=>({nodeId,fieldName,fieldValue:input[field]})),...(workflow.fixedNodes||[]).map(node=>({...node}))];
  if(['qwen-voice-clone','index-voice-clone'].includes(input.model))return [...Object.entries(workflow.nodes).map(([field,[nodeId,fieldName]])=>({nodeId,fieldName,fieldValue:input[field]})),...(input.model==='index-voice-clone'?[{nodeId:'15',fieldName:'emotion_mode',fieldValue:'vector'},{nodeId:'15',fieldName:'emotion_vector',fieldValue:JSON.stringify(input.emotionVector)}]:[])];
  if(input.model==='qwen-voice-design')return Object.entries(workflow.nodes).map(([field,[nodeId,fieldName]])=>({nodeId,fieldName,fieldValue:field==='speechText'?input.designText:input.styles}));
  const explicit=Number.isInteger(input.requestedBpm),tempo=explicit?input.requestedBpm:input.bpm;
@@ -65,7 +65,7 @@ function publicJob(row) {
  return {id:row.id,published:!!row.published,taskId:row.task_id,status:row.status,input,assetId:row.asset_id,audioURL:row.asset_id?'/api/assets/'+row.asset_id:null,error:row.error,usage:row.usage?JSON.parse(row.usage):null,createdAt:row.created_at,updatedAt:row.updated_at};
 }
 export async function nameCreation(input,env,fetcher=fetch) {
- if(['seedvc-speech','cover-inference'].includes(input.model))return input;
+ if(['seedvc-speech','seedvc-song','cover-inference'].includes(input.model))return input;
  if(!input.autoTitle)return input;
  const speech=input.type==='speech';
  const cover=input.model==='yue2-cover';
@@ -217,14 +217,14 @@ export async function handleGenerations(request,env,fetcher=fetch) {
    const matches=row=>JSON.stringify(musicInput(JSON.parse(row.input)))===JSON.stringify(input);
    if(old){if(!matches(old))return json({error:{message:'同一提交标识不能更改创作内容。'}},409);return json({job:publicJob(old)});}
    if(!Object.entries(MUSIC_PROVIDERS).some(([id,p])=>MUSIC_WORKFLOWS[input.model].apps[id]&&env[p.secret]))return json({error:{message:'音频生成服务暂未配置。'}},503);
-   if(input.type!=='speech'&&!['cover-inference','yue2-cover'].includes(input.model)&&!env.DEEPSEEK_API_KEY)return json({error:{message:'AI 编排服务暂未配置。'}},503);
+   if(input.type!=='speech'&&!['seedvc-song','cover-inference','yue2-cover'].includes(input.model)&&!env.DEEPSEEK_API_KEY)return json({error:{message:'AI 编排服务暂未配置。'}},503);
    const id=crypto.randomUUID(),timestamp=new Date().toISOString();
    const inserted=await sql("INSERT INTO generations (id,owner,request_key,provider,input,status,created_at,updated_at) SELECT ?,?,?,'auto',?,'planning',?,? WHERE (SELECT COUNT(*) FROM generations WHERE owner=? AND status IN ('planning','submitting','queued','running'))<3 ON CONFLICT(owner,request_key) DO NOTHING",id,user.id,body.requestKey,JSON.stringify(input),timestamp,timestamp,user.id).run();
    if(!inserted.meta.changes){const existing=await sql('SELECT *, EXISTS(SELECT 1 FROM releases WHERE releases.generation_id=generations.id) AS published FROM generations WHERE owner=? AND request_key=?',user.id,body.requestKey).first();if(!existing)return json({error:{message:'最多同时生成 3 个音频作品，请等待现有任务完成。'}},429);if(!matches(existing))return json({error:{message:'同一提交标识不能更改创作内容。'}},409);return json({job:publicJob(existing)});}
    try{
-    const timing=input.type==='speech'||['cover-inference','yue2-cover'].includes(input.model)?null:await planMusicTiming(input,env,fetcher),limits=MUSIC_WORKFLOWS[input.model].duration;
+    const timing=input.type==='speech'||['seedvc-song','cover-inference','yue2-cover'].includes(input.model)?null:await planMusicTiming(input,env,fetcher),limits=MUSIC_WORKFLOWS[input.model].duration;
     const sample=['qwen-voice-clone','index-voice-clone'].includes(input.model)?await speechReference(input,user.id,env,store):null;
-    const conversion=input.model==='seedvc-speech'?await seedVCSamples(input,user.id,env,store):null;
+    const conversion=['seedvc-speech','seedvc-song'].includes(input.model)?await seedVCSamples(input,user.id,env,store):null;
     const inference=input.model==='cover-inference'?await coverInferenceSource(input,user.id,env,store):null;
     const cover=input.model==='yue2-cover'?await prepareStudioCover(input,user.id,env,store,fetcher):null;
     const named=await nameCreation(cover||input,env,fetcher);if(sample)named.referenceName=sample.referenceName;

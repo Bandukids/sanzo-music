@@ -73,20 +73,20 @@ test('SeedVC dual-channel upload, idempotency, ownership and MP3 output persiste
  await handleLibrary(new Request('https://sanzo.test/api/account',{headers:{'oai-authenticated-user-id':'alice','oai-authenticated-user-email':'alice@example.test'}}),env);
  await env.BUCKET.put('seed-source',audio);
  await env.DB.prepare("INSERT INTO assets (owner,id,object_key,name,mime,bytes,kind,status,created_at) VALUES ('alice','seed-source','seed-source','原始.wav','audio/wav',?,'upload-speech','ready',?)").bind(audio.length,new Date().toISOString()).run();
- for(const provider of ['cn','ai']){
-  let uploads=0,runs=0;const config={...env,DEEPSEEK_API_KEY:'',ASSETS:{fetch:async()=>new Response(audio)},...(provider==='ai'?{RUNNINGHUB_CN_API_KEY:''}:{})};
-  const body={model:'seedvc-speech',type:'speech',studioTool:'speech',sourceAsset:'seed-source',referenceAsset:'preset:warm',title:'',requestKey:'seedvc-test-'+provider+'-0001'};
+ for(const provider of ['cn','ai'])for(const tool of ['speech','song']){
+  let uploads=0,runs=0;const config={...env,DEEPSEEK_API_KEY:'',ASSETS:{fetch:async()=>new Response(audio)},...(provider==='ai'?{RUNNINGHUB_CN_API_KEY:''}:{RUNNINGHUB_AI_API_KEY:''})};
+  const body={model:'seedvc-'+tool,type:tool==='song'?'songs':'speech',studioTool:tool,sourceAsset:'seed-source',referenceAsset:'preset:warm',title:'',requestKey:'seedvc-test-'+provider+'-'+tool+'-0001'};
   const upstream=async(url,options)=>{
    if(url.endsWith('/media/upload/binary')){uploads++;assert.match(url,new RegExp('runninghub\\.'+provider));return response({code:0,data:{fileName:'openapi/'+(uploads%2===1?'source.wav':'ref.mp3')}});}
-   if(url.endsWith('/ai-app/run')){runs++;const payload=JSON.parse(options.body);assert.equal(payload.webappId,provider==='cn'?'2108209006111182850':'2045880827887751169');assert.deepEqual(payload.nodeInfoList,[{nodeId:'18',fieldName:'audio',fieldValue:'openapi/source.wav'},{nodeId:'2',fieldName:'audio',fieldValue:'openapi/ref.mp3'}]);return response({code:0,data:{taskId:'seedvc-'+provider}});}
+   if(url.endsWith('/ai-app/run')){runs++;const payload=JSON.parse(options.body);assert.equal(payload.webappId,provider==='cn'?'2108209006111182850':'2045880827887751169');assert.deepEqual(payload.nodeInfoList,[{nodeId:'18',fieldName:'audio',fieldValue:'openapi/source.wav'},{nodeId:'2',fieldName:'audio',fieldValue:'openapi/ref.mp3'},{nodeId:'14',fieldName:'f0_condition',fieldValue:tool==='song'},{nodeId:'14',fieldName:'auto_f0_adjust',fieldValue:tool!=='song'},{nodeId:'14',fieldName:'pitch_shift',fieldValue:0}]);return response({code:0,data:{taskId:'seedvc-'+provider}});}
    if(url.endsWith('/v2/query'))return response({status:'SUCCESS',results:[{nodeId:'28',url:'https://media.example/wrong.wav'},{nodeId:'30',url:'https://media.example/result.mp3'}]});
    assert.equal(url,'https://media.example/result.mp3');return new Response(new Uint8Array([73,68,51,4]));
   };
-  const {job}=await(await generationHandler(request('',body),config,upstream)).json();assert.equal(job.status,'queued');assert.equal(job.input.title,'原始 · 温暖女声');assert.equal(job.input.sourceAudio,undefined);assert.equal(job.input.referenceAudio,undefined);
+  const {job}=await(await generationHandler(request('',body),config,upstream)).json();assert.equal(job.status,'queued');assert.equal(job.input.workspace,tool==='song'?'default':'speech');assert.equal(job.input.title,'原始 · 温暖女声');assert.equal(job.input.sourceAudio,undefined);assert.equal(job.input.referenceAudio,undefined);
   assert.equal((await generationHandler(request('',body),config,upstream)).status,200);assert.equal(uploads,2);assert.equal(runs,1);
   const {job:done}=await(await generationHandler(request('/'+job.id+'/sync',{}),config,upstream)).json();assert.equal(done.status,'succeeded');
-  const saved=await env.DB.prepare('SELECT mime,name,kind FROM assets WHERE id=?').bind(done.assetId).first();assert.equal(saved.mime,'audio/mpeg');assert.equal(saved.kind,'speech');assert.match(saved.name,/\.mp3$/);
-  const foreign=await generationHandler(request('',{...body,requestKey:'seedvc-foreign-'+provider},'bob'),config,upstream);assert.equal((await foreign.json()).job.status,'failed');assert.equal(runs,1);
+  const saved=await env.DB.prepare('SELECT mime,name,kind FROM assets WHERE id=?').bind(done.assetId).first();assert.equal(saved.mime,'audio/mpeg');assert.equal(saved.kind,tool==='song'?'music':'speech');assert.match(saved.name,/\.mp3$/);
+  const foreign=await generationHandler(request('',{...body,requestKey:'seedvc-foreign-'+provider+'-'+tool},'bob'),config,upstream);assert.equal((await foreign.json()).job.status,'failed');assert.equal(runs,1);
  }
 }));
 async function setup(run){

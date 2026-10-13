@@ -7,15 +7,15 @@ export function initStudioSeedVC({onJob,onInference=()=>{},onError}){
  async function asset(sample,file,kind='upload-speech'){
   if(sample.id)return sample.id;
   if(!file||!file.size||file.size>32*1048576||!/\.(mp3|wav|flac)$/i.test(file.name))throw Error('支持 MP3、WAV、FLAC，每个文件不超过 32 MB。');
-  if(uploaded.has(file))return uploaded.get(file);
+  if(uploaded.get(file)?.has(kind))return uploaded.get(file).get(kind);
   const id='studio-'+crypto.randomUUID();
   const upload=api('/api/assets/'+id,{method:'PUT',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name),'X-Asset-Kind':kind},body:file}).then(()=>id);
-  uploaded.set(file,upload);
-  try{return await upload;}catch(error){uploaded.delete(file);throw error;}
+  if(!uploaded.has(file))uploaded.set(file,new Map());uploaded.get(file).set(kind,upload);
+  try{return await upload;}catch(error){uploaded.get(file).delete(kind);throw error;}
  }
- async function submit(source,reference,files,title){
-  const sourceAsset=await asset(source,files.source),referenceAsset=await asset(reference,files.target);
-  const input={model:'seedvc-speech',type:'speech',studioTool:'speech',sourceAsset,referenceAsset,title,autoTitle:!title};
+ async function submit(source,reference,files,title,tool='speech'){
+  const song=tool==='song',sourceAsset=await asset(source,files.source,song?'upload-music':'upload-speech'),referenceAsset=await asset(reference,files.target);
+  const input={model:song?'seedvc-song':'seedvc-speech',type:song?'songs':'speech',studioTool:tool,sourceAsset,referenceAsset,title,autoTitle:!title};
   return request(input);
  }
  async function cover(analysis,values){return request({model:'yue2-cover',type:'songs',studioTool:'cover',analysisJobId:analysis.analysisJobId,sourceAsset:analysis.sourceAsset,lyrics:values.lyrics,styles:values.styles,language:values.language,title:values.title,autoTitle:!values.title});}
@@ -37,7 +37,7 @@ export function initStudioSeedVC({onJob,onInference=()=>{},onError}){
  }
  function accept(job){
   if(job.input.model==='cover-inference'){const known=inferences.get(job.input.sourceAsset);if(known?.id===job.id&&Date.parse(known.updatedAt)>Date.parse(job.updatedAt))return;inferences.set(job.input.sourceAsset,job);onInference(job);}
-  else if(['seedvc-speech','yue2-cover'].includes(job.input.model))onJob(job);else return;
+  else if(['seedvc-speech','seedvc-song','yue2-cover'].includes(job.input.model))onJob(job);else return;
   if(['failed','succeeded'].includes(job.status))try{const keys=JSON.parse(sessionStorage.getItem('sanzo-studio-submissions')||'{}');for(const [signature,value]of Object.entries(keys))if(value?.jobId===job.id)delete keys[signature];sessionStorage.setItem('sanzo-studio-submissions',JSON.stringify(keys));}catch{}
   if(['queued','running'].includes(job.status))pending.set(job.id,job);else pending.delete(job.id);
  }
