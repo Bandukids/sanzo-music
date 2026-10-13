@@ -14,7 +14,7 @@ import { initWorkspaceMotion } from '/workspace-motion.js';
 import { communityTracks as seeds } from '/music-catalog.js';
 import { initPlayerLyrics } from '/player-visuals.js';
 import { requestAssistant, withAIButton, isAssistantBusy } from '/ai-assistant.js';
-import { openCloudState, saveCloudState, peekCloudState, flushCloudState } from '/cloud-state.js';
+import { api, openCloudState, saveCloudState, peekCloudState, flushCloudState } from '/cloud-state.js';
 import { storeAudio } from '/training-audio-store.js';
 import { initCoverControls } from '/cover-controls.js';
 import { publishSong, unpublishSong, loadPublishedTracks } from '/published-music.js';
@@ -82,7 +82,7 @@ function renderExplore() {
  $('#explore-empty').hidden=!!list.length;
  $('#creators').innerHTML=[['L','Luna Waves','Lo-fi · 夜晚的温柔'],['N','NEON / 霓虹','Electronic · 城市光影'],['E','Echo Studio','Cinematic · 无垠梦境']].map(c=>`<article class="creator-card glass"><span class="creator-avatar-mini">${c[0]}</span><div><strong>${c[1]}</strong><small>${c[2]}</small></div><button data-follow="${c[1]}" aria-pressed="false" aria-label="关注 ${c[1]}">关注</button></article>`).join('');
 }
-function renderDrafts() {trashManager?.render();
+function renderDrafts() {trashManager?.render();uploadManager?.refresh();
  const drafts=collections.visible();collections.renderToolbar();
  $('#draft-count').textContent=collections.isTrash()?state.drafts.filter(d=>d.trashed).length+' 个已移除':state.drafts.filter(d=>!d.trashed).length+' 个作品';
  const markup=drafts.map(d=>{
@@ -97,13 +97,14 @@ function renderDrafts() {trashManager?.render();
  songPreview?.refresh();
 }
 function navigate(next, updateHash=true) {
+ next=({materials:'uploads','materials-trash':'trash'})[next]||next;
  if(next==='explore'){location.href='/explore/';return;}
  if(!['explore','create','library','uploads','trash'].includes(next))return;
  const changing=view!==next;
  if(next!=='create')songPreview?.close();
  view=next;document.body.dataset.workspaceView=next;$$('[data-view]').forEach(b=>{b.setAttribute('aria-selected',String(b.dataset.view===next));b.tabIndex=b.dataset.view===next?0:-1;});
  ['explore','create','library','uploads','trash'].forEach(v=>$('#view-'+v).hidden=v!==next);
- if(updateHash)history.replaceState(null,'','#'+next);
+ if(updateHash)history.replaceState(null,'','#'+(next==='uploads'?'materials':next==='trash'?'materials-trash':next));
  window.dispatchEvent(new Event('sanzo-view-change'));
  if(next==='explore')renderExplore();else if(next==='create')renderDrafts();else if(next==='uploads')uploadManager.show();else if(next==='trash')trashManager.show();else renderLibrary();
  if(changing)$('#content-panel').scrollIntoView({block:'start'});
@@ -307,7 +308,7 @@ nativeAudio.addEventListener('loadedmetadata',()=>{if(current.audioURL&&Number.i
 nativeAudio.addEventListener('error',()=>{if(current.audioURL){pause();toast('云端音频读取失败，请稍后重试。');}});
 function finishTrack(){
  pause();
- if(view==='create'||view==='uploads'){elapsed=current.duration;updatePlayerProgress();return;}
+ if(view==='create'||view==='uploads'||view==='trash'){elapsed=current.duration;updatePlayerProgress();return;}
  elapsed=0;repeating?playTrack(current.id,false):nextTrack();
 }
 nativeAudio.addEventListener('ended',finishTrack);
@@ -439,7 +440,7 @@ window.addEventListener('sanzo-cloud-update',event=>{
  const latest=event.detail.data;for(const field of ['generationSeen','drafts','albums','liked','workspaces','voiceLibrary'])if(Array.isArray(latest[field]))state[field]=latest[field];
  if(view==='library'&&!albumEdit)renderLibrary();renderDrafts();refreshPlayer();
 });
-const collections=initCollections({state,persist,toast,render:renderDrafts,onMove:(id,target)=>{if(editingId===id){$('#draft-workspace').value=target;state.form.workspace=target;}},editingRemoved:id=>{if(editingId===id){editingId=null;$('#editing-label').textContent='新的灵感';}if(current.id===id&&playing)pause();},onPurge:ids=>{if(ids.has(current.id)){sound.stop();nativeAudio.pause();playing=false;elapsed=0;operation++;current=seeds[0];refreshPlayer();}}});
+const collections=initCollections({state,persist,toast,render:renderDrafts,onPlay:(id,toggle)=>playTrack(id,toggle),materialById:id=>uploadManager?.has(id),removeMaterial:id=>uploadManager?.remove(id),onMove:(id,target)=>{if(editingId===id){$('#draft-workspace').value=target;state.form.workspace=target;}},editingRemoved:id=>{if(editingId===id){editingId=null;$('#editing-label').textContent='新的灵感';}if(current.id===id&&playing)pause();},onPurge:ids=>{if(ids.has(current.id)){sound.stop();nativeAudio.pause();playing=false;elapsed=0;operation++;current=seeds[0];refreshPlayer();}}});
 const speechControls=initSpeechControls({state,toast,onChange:updateFormStatus});
 function saveABCResult(form,output) {
  const label=abcOutputLabel(output),base=(form.title.trim().replace(/ · (?:ABC 乐谱|简谱|五线谱|ABC 合成音乐|AI 编曲设想)$/,'')||form.abcNotation.match(/^T:\s*(.+)$/m)?.[1]||'新的旋律').slice(0,48);
@@ -476,9 +477,14 @@ try {
  }
 }catch{}
 songPreview=initSongPreview({findDraft:id=>state.drafts.find(d=>d.id===id),workspaceName:id=>collections.name(id),isPlaying:id=>playing&&current.id===id,onPlay:id=>playTrack(id),toast});
-uploadManager=initUploads({toast,onChange:()=>trashManager?.render(),onPlay:id=>playTrack(id),isPlaying:id=>playing&&current.id===id,onPreviewABC:({name,text})=>abcControls.showDraft({type:'abc',abcOutput:'abc',title:name,unsavedSource:true,form:{...defaultForm(),type:'abc',workspace:'abc',abcNotation:text,abcFileName:name,abcFlow:'music'}})});
-trashManager=initTrash({uploads:uploadManager,getDrafts:()=>state.drafts,toast,restoreDraft:id=>{const d=state.drafts.find(d=>d.id===id);if(d){d.trashed=false;delete d.removedAt;persist();renderDrafts();}},purgeDrafts:async ids=>{const removed=new Set(state.drafts.filter(d=>d.trashed&&ids.has(d.id)).map(d=>d.id));state.drafts.filter(d=>removed.has(d.id)&&d.jobId).forEach(d=>{if(!state.generationSeen.includes(d.jobId))state.generationSeen.push(d.jobId);});state.drafts=state.drafts.filter(d=>!removed.has(d.id));state.albums.forEach(a=>a.tracks=a.tracks.filter(id=>!removed.has(id)));state.liked=state.liked.filter(id=>!removed.has(id));if(removed.has(editingId)){editingId=null;$('#editing-label').textContent='新的灵感';}if(removed.has(current.id)){sound.stop();nativeAudio.pause();playing=false;elapsed=0;operation++;current=seeds[0];refreshPlayer();}persist();await flushCloudState('workspace');renderDrafts();}});
-refreshPlayer();navigate(['explore','create','library','uploads','trash'].includes(location.hash.slice(1))?location.hash.slice(1):'create',false);
+uploadManager=initUploads({toast,onPurgedAsset:result=>{for(const id of result.generationIds||[])if(!state.generationSeen.includes(id))state.generationSeen.push(id);persist();},getDrafts:()=>state.drafts,getGenerationSeen:()=>state.generationSeen,onRemoveDraft:id=>collections.move(id,'trash'),onRenameDraft:(id,title)=>{const d=state.drafts.find(d=>d.id===id);if(d){d.materialName=title;d.title=title;persist();renderDrafts();}},onChange:()=>trashManager?.render(),onPlay:id=>playTrack(id),isPlaying:id=>playing&&current.id===id,onPreviewABC:({name,text,draft})=>abcControls.showDraft(draft||{type:'abc',abcOutput:'abc',title:name,unsavedSource:true,form:{...defaultForm(),type:'abc',workspace:'abc',abcNotation:text,abcFileName:name,abcFlow:'music'}})});
+trashManager=initTrash({uploads:uploadManager,getDrafts:()=>state.drafts,toast,restoreDraft:id=>{const d=state.drafts.find(d=>d.id===id);if(d){d.trashed=false;delete d.removedAt;persist();renderDrafts();}},purgeDrafts:async ids=>{
+ await flushCloudState('workspace');const removed=new Set(),assets=[];let failed=0;
+ for(const d of state.drafts.filter(d=>d.trashed&&ids.has(d.id))){try{if(d.assetId){try{await api('/api/assets/'+encodeURIComponent(d.assetId),{method:'DELETE'});}catch(error){if(error.status!==404)throw error;}assets.push(d.assetId);}removed.add(d.id);if(d.jobId&&!state.generationSeen.includes(d.jobId))state.generationSeen.push(d.jobId);}catch{failed++;}}
+ state.drafts=state.drafts.filter(d=>!removed.has(d.id));state.albums.forEach(a=>a.tracks=a.tracks.filter(id=>!removed.has(id)));state.liked=state.liked.filter(id=>!removed.has(id));uploadManager.forget(assets);
+ if(removed.has(editingId)){editingId=null;$('#editing-label').textContent='新的灵感';}if(removed.has(current.id)){pause();current=seeds[0];elapsed=0;refreshPlayer();}persist();await flushCloudState('workspace');renderDrafts();if(failed)throw Error(failed+' 项作品未能清理，已保留在回收站，可稍后重试。');
+}});
+refreshPlayer();navigate(['explore','create','library','uploads','trash','materials','materials-trash'].includes(location.hash.slice(1))?location.hash.slice(1):'create',false);
 initWorkspaceMotion();
 
 // Optional browser tools operate only on this local prototype state.
@@ -495,13 +501,13 @@ function applyMusicJob(job) {
  const existing=state.drafts.find(d=>d.jobId===job.id);
  if(!existing&&state.generationSeen.includes(job.id))return;
  const type=job.input.model==='yue2-abc'?'abc':job.input.type==='speech'||job.input.model==='qwen-voice-design'?'speech':'songs';
- const signature=JSON.stringify([job.status,job.assetId||null,job.error||null,!!job.published,job.input.title,job.input.referenceName||null]);
+ const signature=JSON.stringify([job.status,job.assetId||null,job.error||null,!!job.published,existing?.materialName||job.input.title,job.input.referenceName||null]);
  if(existing&&existing.type===type&&JSON.stringify([existing.jobStatus,existing.assetId||null,existing.jobError||null,!!existing.published,existing.title,existing.form?.referenceName||null])===signature)return;
  if(!state.generationSeen.includes(job.id))state.generationSeen.push(job.id);
  const form={...defaultForm(),...job.input,...(job.input.model==='yue2-cover'?{model:'yue2',styles:job.input.styles||job.input.coverStyles,description:job.input.lyrics.slice(0,5000)}:{}),type,...(type==='abc'?{abcFlow:'score',abcLyrics:job.input.lyrics,abcPrompt:job.input.styles,abcNotation:job.input.abcNotation||'',abcInstrumental:job.input.instrumental,abcGender:job.input.gender}:{})};
- const data={...(type==='abc'?{abcOutput:'abc'}:{}),title:job.input.title,published:!!job.published,jobId:job.id,jobStatus:job.status,jobError:job.error,assetId:job.assetId,kind:job.assetId?'generated':'draft',updated:generationStatus[job.status]||'生成中'};
+ const data={...(type==='abc'?{abcOutput:'abc'}:{}),title:existing?.materialName||job.input.title,published:!!job.published,jobId:job.id,jobStatus:job.status,jobError:job.error,assetId:job.assetId,kind:job.assetId?'generated':'draft',updated:generationStatus[job.status]||'生成中'};
  if(existing)Object.assign(existing,data,{type,form,...(type==='speech'&&existing.workspace==='default'?{workspace:'speech'}:{})});
- else state.drafts.unshift({id:'generation-'+job.id,type,title:job.input.title,description:job.input.description,lyrics:job.input.lyrics,styles:job.input.styles,mode:job.input.mode,workspace:state.workspaces.some(w=>w.id===job.input.workspace)?job.input.workspace:'default',art:coverRecords.get('song:'+job.id)?.art||'liquid-glass.png',form,...data});
+ else state.drafts.unshift({id:'generation-'+job.id,type,title:job.input.title,description:job.input.description,lyrics:job.input.lyrics,styles:job.input.styles||job.input.coverStyles||'',mode:job.input.mode,workspace:state.workspaces.some(w=>w.id===job.input.workspace)?job.input.workspace:'default',art:coverRecords.get('song:'+job.id)?.art||'liquid-glass.png',form,...data});
  return true;
 }
 function applyMusicJobs(jobs){

@@ -67,15 +67,22 @@ export async function handleLibrary(request,env) {
    const id=asset[1],found=await store.asset(user.id,id);
    if(method==='DELETE'){
     if(!found)return failure('未找到这份素材。',404,'NOT_FOUND');
-    if(!['upload-music','upload-speech','upload-abc','voice'].includes(found.kind))return failure('此文件不属于上传素材。',409);
-    const metadata=await store.document(user.id,'uploads');
-    if(!metadata.data?.items?.some(i=>i.id===id&&i.trashed))return failure('请先将素材移入回收站。',409);
+    const generated=['music','speech'].includes(found.kind);
+    if(!generated&&!['upload-music','upload-speech','upload-abc','voice'].includes(found.kind))return failure('此文件不属于可清理素材。',409);
+    const [metadata,workspace]=await Promise.all([store.document(user.id,'uploads'),store.document(user.id,'workspace')]);
+    const inTrash=metadata.data?.items?.some(i=>i.id===id&&i.trashed)||generated&&workspace.data?.drafts?.some(d=>d.assetId===id&&d.trashed);
+    if(!inTrash)return failure('请先将素材移入回收站。',409);
+    const jobs=generated?(await store.statement('SELECT id FROM generations WHERE owner=? AND asset_id=?',user.id,id).all()).results:[];
+    const coverFiles=generated?(await store.statement("SELECT a.id,a.object_key FROM covers c JOIN generations g ON g.id=c.target_id AND g.owner=c.owner JOIN assets a ON a.id=c.asset_id AND a.owner=c.owner WHERE c.owner=? AND c.target_type='song' AND g.asset_id=?",user.id,id).all()).results:[];
+    for(const image of coverFiles)await env.BUCKET.delete(image.object_key);
     await env.BUCKET.delete(found.object_key);
     await env.DB.batch([
+     ...coverFiles.flatMap(image=>[store.statement("UPDATE users SET bytes=MAX(0,bytes-COALESCE((SELECT bytes FROM assets WHERE owner=? AND id=?),0)) WHERE id=?",user.id,image.id,user.id),store.statement('DELETE FROM assets WHERE owner=? AND id=?',user.id,image.id)]),
+     ...(generated?[store.statement('DELETE FROM releases WHERE owner=? AND generation_id IN (SELECT id FROM generations WHERE owner=? AND asset_id=?)',user.id,user.id,id),store.statement("DELETE FROM covers WHERE owner=? AND target_type='song' AND target_id IN (SELECT id FROM generations WHERE owner=? AND asset_id=?)",user.id,user.id,id),store.statement('UPDATE generations SET asset_id=NULL WHERE owner=? AND asset_id=?',user.id,id)]:[]),
      store.statement("UPDATE users SET bytes=MAX(0,bytes-COALESCE((SELECT bytes FROM assets WHERE owner=? AND id=? AND status='ready'),0)) WHERE id=?",user.id,id,user.id),
      store.statement("DELETE FROM assets WHERE owner=? AND id=? AND status='ready'",user.id,id)
     ]);
-    return json({id,deleted:true});
+    return json({id,deleted:true,generationIds:jobs.map(g=>g.id)});
    }
    if(method==='GET'||method==='HEAD'){
     if(!found)return failure('未找到这段音频。',404,'NOT_FOUND');

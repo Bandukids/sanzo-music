@@ -1,0 +1,9 @@
+export function initCreationInteractions({resolve,onMove,onPlay}){
+ let dragged=null;const clear=()=>{document.querySelectorAll('.drop-ready,.is-dragging').forEach(el=>el.classList.remove('drop-ready','is-dragging'));document.body.classList.remove('creation-dragging');dragged=null;};
+ document.addEventListener('dragstart',e=>{const card=e.target.closest('[data-creation-id],[data-material-id]');if(!card||card.dataset.trashed==='true'||e.target.closest('input,select,textarea,summary,audio'))return;const id=card.dataset.creationId||card.dataset.materialId;if(!resolve(id))return;e.dataTransfer.setData('application/x-sanzo-creation',id);e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';dragged=id;card.classList.add('is-dragging');document.body.classList.add('creation-dragging');});
+ document.addEventListener('dragover',e=>{if(!dragged)return;const target=e.target.closest('[data-drop-target]');if(target){e.preventDefault();e.dataTransfer.dropEffect='move';target.classList.add('drop-ready');}});
+ document.addEventListener('dragleave',e=>e.target.closest('[data-drop-target]')?.classList.remove('drop-ready'));
+ document.addEventListener('drop',e=>{const target=e.target.closest('[data-drop-target]');if(!target||!dragged)return;e.preventDefault();const id=e.dataTransfer.getData('application/x-sanzo-creation');if(id===dragged&&resolve(id))Promise.resolve(onMove(id,target.dataset.dropTarget)).catch(()=>{});clear();});
+ document.addEventListener('dragend',clear);
+ document.addEventListener('dblclick',e=>{if(e.target.closest('input,select,textarea,summary,a,audio,.soft-button,.upload-file-actions,.draft-controls'))return;const card=e.target.closest('[data-creation-id],[data-material-id]');if(!card||card.dataset.trashed==='true')return;const id=card.dataset.creationId||card.dataset.materialId;if(resolve(id))onPlay?.(id,false);});
+}

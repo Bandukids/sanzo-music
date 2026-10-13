@@ -12,9 +12,10 @@ if (sidebar) {
   home:'<path d="m3 11 9-8 9 8v10h-6v-7H9v7H3Z"/>'
  };
  const icon = id => `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[id]}</svg>`;
- const pages = [['explore','探索音乐','/explore/'],['create','创作空间','/create/'],['uploads','上传素材','/create/#uploads'],['studio','Studio','/studio/'],['training','模型训练','/training/']];
+ const pages = [['explore','探索音乐','/explore/'],['create','创作空间','/create/'],['studio','Studio','/studio/'],['training','模型训练','/training/'],['uploads','素材管理','/create/#materials']];
  const panelIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M9 4v16m6-11-3 3 3 3"/></svg>';
  sidebar.innerHTML = `<div class="sidebar-heading"><a class="sidebar-brand" href="/" aria-label="SANZO 首页"><span class="sidebar-wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>SANZO</span></a><button class="sidebar-close" type="button" aria-controls="app-sidebar">${panelIcon}</button></div><nav class="sidebar-nav" aria-label="主要导航">${pages.map(([id,title,url])=>`<a class="sidebar-link" href="${url}" ${id===page?'aria-current="page"':''} title="${title}">${icon(id)}<span>${title}</span>${id==='training'&&!TRAINING_AVAILABLE?'<small class="training-status">暂未开放</small>':''}</a>`).join('')}</nav><div class="sidebar-footer"><div class="sidebar-controls"></div><a class="sidebar-home" href="/" aria-label="返回首页">${icon('home')}<span>返回首页</span></a><small>SANZO / MUSIC LAB</small></div>`;
+ const materialLink=sidebar.querySelector('a[href="/create/#materials"]'),materialRow=document.createElement('div');materialRow.className='sidebar-materials';materialLink.before(materialRow);materialRow.append(materialLink);const trashLink=document.createElement('a');trashLink.href='/create/#materials-trash';trashLink.className='sidebar-material-trash';trashLink.dataset.dropTarget='trash';trashLink.setAttribute('aria-label','素材管理回收站 · 可拖入作品');trashLink.title='素材管理回收站 · 拖入作品删除';trashLink.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></svg>';materialRow.append(trashLink);
  const header = document.querySelector('.workspace-header, .explore-header');
  if (header) {
   const mobileToggle = document.createElement('button');
@@ -106,14 +107,14 @@ if (sidebar) {
  }
 }
  function syncPageNavigation(){
- const isUploads=document.body.dataset.page==='create'&&location.hash==='#uploads';
+ const isUploads=document.body.dataset.page==='create'&&['#uploads','#trash','#materials','#materials-trash'].includes(location.hash);
  const current=isUploads?'uploads':document.body.dataset.page;
  document.querySelectorAll('.sidebar-nav .sidebar-link').forEach(link=>{
-  const selected=link.getAttribute('href')===(current==='uploads'?'/create/#uploads':current==='create'?'/create/':'/'+current+'/');
+  const selected=link.getAttribute('href')===(current==='uploads'?'/create/#materials':current==='create'?'/create/':'/'+current+'/');
   if(selected)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
  });
  const title=document.querySelector('.mobile-page-name');
- if(title&&document.body.dataset.page==='create')title.textContent=isUploads?'上传素材':'创作空间';
+ if(title&&document.body.dataset.page==='create')title.textContent=isUploads?'素材管理':'创作空间';
 }
 window.addEventListener('hashchange',syncPageNavigation);
 window.addEventListener('sanzo-view-change',syncPageNavigation);

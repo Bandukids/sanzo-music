@@ -1,3 +1,4 @@
+import {initCreationInteractions} from './creation-interactions.js';
 import {patchMarkup} from './stable-dom.js';
 export const MAX_WORKSPACES=20;
 export function normalizeCollections(state){
@@ -10,7 +11,7 @@ export function deleteWorkspace(state,id){const workspace=state.workspaces.find(
 export function moveCreation(state,id,target){const d=state.drafts.find(d=>d.id===id);if(!d)return false;if(target==='trash'){d.trashed=true;d.removedAt=Date.now();}else{if(target!=='default'&&!state.workspaces.some(w=>w.id===target))return false;d.workspace=target;d.trashed=false;delete d.removedAt;if(d.form)d.form.workspace=target;}return true;}
 export function restoreCreation(state,id){const d=state.drafts.find(d=>d.id===id);if(!d)return false;d.trashed=false;delete d.removedAt;return true;}
 export function emptyTrash(state){const removed=new Set(state.drafts.filter(d=>d.trashed).map(d=>d.id));state.drafts=state.drafts.filter(d=>!d.trashed);state.albums.forEach(a=>a.tracks=a.tracks.filter(id=>!removed.has(id)));state.liked=state.liked.filter(id=>!removed.has(id));return removed;}
-export function initCollections({state,persist,toast,render,editingRemoved,onMove,onPurge}){
+export function initCollections({state,persist,toast,render,editingRemoved,onMove,onPurge,onPlay,materialById,removeMaterial}){
  const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const icon=n=>`<svg aria-hidden="true"><use href="#i-${n}"/></svg>`;
@@ -54,10 +55,6 @@ export function initCollections({state,persist,toast,render,editingRemoved,onMov
  $('#move-work-dialog').addEventListener('close',()=>{if(!creatingForMove)movingId=null;});
  $('#workspace-dialog').addEventListener('cancel',()=>{creatingForMove=false;movingId=null;});
  $('#delete-workspace-dialog').addEventListener('close',()=>{deletingWorkspace=null;});
- document.addEventListener('dragstart',e=>{if(e.target.closest('button,summary,input,a')){e.preventDefault();return;}const card=e.target.closest('[data-creation-id]');if(!card||card.dataset.trashed==='true')return;draggedId=card.dataset.creationId;e.dataTransfer.setData('application/x-sanzo-creation',draggedId);e.dataTransfer.effectAllowed='move';card.classList.add('is-dragging');document.body.classList.add('creation-dragging');});
- document.addEventListener('dragover',e=>{if(!draggedId)return;const target=e.target.closest('[data-drop-target]');if(target){e.preventDefault();e.dataTransfer.dropEffect='move';target.classList.add('drop-ready');}});
- document.addEventListener('dragleave',e=>e.target.closest('[data-drop-target]')?.classList.remove('drop-ready'));
- document.addEventListener('drop',e=>{const target=e.target.closest('[data-drop-target]');if(!target||!draggedId)return;e.preventDefault();const id=e.dataTransfer.getData('application/x-sanzo-creation');if(id===draggedId&&state.drafts.some(d=>d.id===id))move(id,target.dataset.dropTarget);$$('.drop-ready').forEach(t=>t.classList.remove('drop-ready'));document.body.classList.remove('creation-dragging');draggedId=null;});
- document.addEventListener('dragend',()=>{$$('.drop-ready,.is-dragging').forEach(t=>t.classList.remove('drop-ready','is-dragging'));document.body.classList.remove('creation-dragging');draggedId=null;});
- destinations();return {name,actions,renderToolbar,refreshDestinations:destinations,isTrash:()=>scope==='trash',visible:()=>state.drafts.filter(d=>scope==='trash'?d.trashed:!d.trashed&&(scope!=='workspace'||d.workspace===activeWorkspace)&&(!['songs','speech','sounds','abc'].includes(scope)||(d.type||'songs')===scope)),showAll:()=>{const changed=scope!=='all';scope='all';activeWorkspace=null;renderToolbar();return changed;}};
+ initCreationInteractions({resolve:id=>state.drafts.find(d=>d.id===id)||materialById?.(id),onMove:(id,target)=>state.drafts.some(d=>d.id===id)?move(id,target):target==='trash'?removeMaterial?.(id):toast('上传素材请在素材管理中整理。'),onPlay});
+ destinations();return {move,name,actions,renderToolbar,refreshDestinations:destinations,isTrash:()=>scope==='trash',visible:()=>state.drafts.filter(d=>scope==='trash'?d.trashed:!d.trashed&&(scope!=='workspace'||d.workspace===activeWorkspace)&&(!['songs','speech','sounds','abc'].includes(scope)||(d.type||'songs')===scope)),showAll:()=>{const changed=scope!=='all';scope='all';activeWorkspace=null;renderToolbar();return changed;}};
 }
