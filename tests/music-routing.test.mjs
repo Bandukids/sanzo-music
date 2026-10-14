@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rankMusicProviders, MUSIC_WORKFLOWS } from '../server/music-routing.mjs';
+import { rankMusicProviders, routingStats, MUSIC_WORKFLOWS } from '../server/music-routing.mjs';
 import { musicInput, planMusicTiming, nodeInfoList } from '../server/generations.mjs';
 const env={RUNNINGHUB_CN_API_KEY:'cn',RUNNINGHUB_AI_API_KEY:'ai',DEEPSEEK_API_KEY:'deepseek'};
 const sample={model:'ace-step',styles:'slow piano, 72 BPM',lyrics:'[Verse 1]\n海风\n[Chorus]\n重新出发',title:'海风'};
+test('渠道统计并行读取两份数据，保留跨渠道拒绝、成功与旧任务的历史',async()=>{
+ const calls=[],history=[{provider:'ai',status:'succeeded',usage:'{"taskCostTime":60}',updated_at:'new',input:JSON.stringify({routingAttempts:[{provider:'cn',outcome:'rejected',at:'rejected'},{provider:'ai',outcome:'accepted'}]})},{provider:'cn',status:'running',usage:null,updated_at:'old',input:'{}'}];
+ const stats=await routingStats(query=>({all:async()=>{calls.push(query);return {results:query.includes('COUNT(*)')?[{provider:'cn',count:3},{provider:'ai',count:1}]:history};}}));
+ assert.equal(calls.length,2);assert.equal(stats.cn.active,3);assert.equal(stats.ai.active,1);assert.equal(stats.cn.assigned,2);assert.equal(stats.ai.assigned,1);assert.equal(stats.cn.recent[0].status,'failed');assert.equal(stats.cn.recent[0].usage,null);assert.equal(stats.cn.recent[0].updated_at,'rejected');assert.equal(stats.ai.recent[0].usage,history[0].usage);assert.equal(stats.cn.recent[1].status,'running');
+});
 test('后台选择已配置渠道，避开占满和冷却渠道，考虑成功耗时和任务负载',()=>{
  const ranks=(stats={},config=env,excluded=[])=>rankMusicProviders('ace-step',config,stats,excluded);
  assert.equal(ranks()[0].id,'cn');

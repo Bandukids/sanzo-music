@@ -19,6 +19,7 @@ import { storeAudio } from '/training-audio-store.js';
 import { initCoverControls } from '/cover-controls.js';
 import { publishSong, unpublishSong, loadPublishedTracks } from '/published-music.js';
 import { generationRequest, generationStatus, generationHint, isMusicPending, downloadMusic } from '/music-generation.js';
+import {createTaskPoller,observeTaskPolling} from './task-poller.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -495,7 +496,7 @@ if(document.modelContext?.registerTool){
 }
 
 // Restore cloud generation records independently of the draft document.
-let generationPolling=false,generationTimer=null,generationStopped=false;
+
 function applyMusicJob(job) {
  if(job.input.model==='cover-inference')return false;
  const existing=state.drafts.find(d=>d.jobId===job.id);
@@ -512,20 +513,14 @@ function applyMusicJob(job) {
 }
 function applyMusicJobs(jobs){
  let changed=false;for(const job of jobs)changed=applyMusicJob(job)||changed;
- if(changed){persist();if(view==='create')renderDrafts();}
+ if(changed){persist();if(view==='create')renderDrafts();else if(view==='uploads')uploadManager?.refresh();else if(view==='trash')trashManager?.render();}
 }
-async function pollMusicJobs() {
- if(generationPolling||generationStopped||document.hidden)return;
- generationPolling=true;
- try{
-  const {jobs}=await generationRequest();
-  applyMusicJobs(jobs);
-  for(const job of jobs.filter(j=>['queued','running'].includes(j.status))){
-   const result=await generationRequest('/'+job.id+'/sync',{});applyMusicJobs([result.job]);
-  }
- }catch(error){if(busy)toast(error.message);}
- finally{generationPolling=false;if(!generationStopped)generationTimer=setTimeout(pollMusicJobs,12000);}
-}
+const musicTaskPoller=createTaskPoller({
+ fetchJobs:async()=>(await generationRequest()).jobs,
+ syncJob:async job=>(await generationRequest('/'+job.id+'/sync',{})).job,
+ onJobs:applyMusicJobs,onError:error=>{if(busy)toast(error.message);}
+});
+const musicTaskPolling=observeTaskPolling(musicTaskPoller);
 async function generateMusic(form) {
  busy=true;musicSubmitting=true;$('#generate').disabled=true;$('#generate').classList.add('is-generating');$('#generate').setAttribute('aria-busy','true');$('#generate span').textContent='正在创作';$$('[data-type]').forEach(b=>b.disabled=true);
  refreshGenerationFeedback();
@@ -533,10 +528,10 @@ async function generateMusic(form) {
  const speech=form.type==='speech';
  const submission={...form,...(speech?{model:form.speechModel==='tts'?(form.ttsModel==='index-tts'?'index-voice-clone':'qwen-voice-clone'):'qwen-voice-design'}:{}),requestKey:crypto.randomUUID()};
  try{
-  const {job}=await generationRequest('',submission);applyMusicJobs([job]);
+  const {job}=await generationRequest('',submission);musicTaskPoller.accept([job]);
   if((form.type==='songs'||form.type==='abc'&&form.abcFlow!=='music')&&['queued','running','succeeded'].includes(job.status))coverControls.generate({type:'song',id:job.id},true);
   toast(job.status==='failed'||job.status==='unknown'?job.error:'任务已提交，生成结果会自动保存到云端。');
-  clearTimeout(generationTimer);pollMusicJobs();
+  musicTaskPolling.wake();
  }catch(error){toast(error.message+' 可刷新查看任务记录，本站不会自动重提。');}
  finally{busy=false;musicSubmitting=false;$('#generate').disabled=creationType==='sounds'&&!WOOSH_AVAILABLE;$('#generate').classList.remove('is-generating');$('#generate').removeAttribute('aria-busy');$('#generate span').textContent=creationType==='speech'?'生成语音':'创作音乐';$$('[data-type]').forEach(b=>b.disabled=false);refreshGenerationFeedback();if(creationType==='abc')abcControls.refresh();}
 }
@@ -547,10 +542,7 @@ function refreshMusicCapabilities() {
 }
 refreshMusicCapabilities();
 $('#model').addEventListener('change',()=>{refreshMusicCapabilities();updateFormStatus();});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){clearTimeout(generationTimer);pollMusicJobs();}});
-window.addEventListener('pagehide',()=>{generationStopped=true;clearTimeout(generationTimer);});
-window.addEventListener('pageshow',()=>{generationStopped=false;pollMusicJobs();});
-pollMusicJobs();
+musicTaskPolling.start();
 
 const publicationBusy=new Set();
 async function publishCreation(draft){

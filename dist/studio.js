@@ -21,7 +21,27 @@ $('#studio-content').innerHTML=`<div class="studio-workbench"><section class="st
 function fileField(type,title,note){return `<label class="studio-file-drop" id="studio-${type}-upload" tabindex="0" role="button" for="studio-${type}-file">${icon('upload')}<strong id="studio-${type}-name">${title}</strong><span>${note} · MP3 / WAV / FLAC</span><input id="studio-${type}-file" type="file" accept=".mp3,.wav,.flac" hidden></label><audio id="studio-${type}-audio" controls preload="metadata" hidden aria-label="${type==='source'?'原始音频':'目标音色'}试听"></audio>`;}
 const removed=id=>metadata.find(m=>m.id===id)?.trashed;
 const name=a=>metadata.find(m=>m.id===a.id)?.name||a.name;
-function options(){const old=$('#studio-source').value,target=$('#studio-target').value,speech=active==='speech';const uploads=assets.filter(a=>a.kind===(speech?'upload-speech':'upload-music')&&!removed(a.id)),works=drafts.filter(d=>!d.trashed&&d.assetId&&(speech?d.type==='speech':(!d.type||d.type==='songs'||d.type==='abc')));$('#studio-source').innerHTML='<option value="">上传音频文件</option>'+(works.length?'<optgroup label="我的创作">'+works.map(d=>`<option value="draft:${esc(d.id)}">${esc(d.title)}</option>`).join('')+'</optgroup>':'')+(uploads.length?'<optgroup label="上传素材">'+uploads.map(a=>`<option value="asset:${esc(a.id)}">${esc(name(a))}</option>`).join('')+'</optgroup>':'');$('#studio-source').value=[...$('#studio-source').options].some(o=>o.value===old)?old:'';const voices=assets.filter(a=>['upload-speech','voice','speech'].includes(a.kind)&&!removed(a.id)&&!drafts.some(d=>d.trashed&&d.assetId===a.id));$('#studio-target').innerHTML='<option value="">上传目标音色</option><optgroup label="预设音色">'+voicePresets.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('')+'</optgroup>'+(voices.length?'<optgroup label="我的语音素材">'+voices.map(a=>`<option value="asset:${esc(a.id)}">${esc(name(a))}</option>`).join('')+'</optgroup>':'');$('#studio-target').value=[...$('#studio-target').options].some(o=>o.value===target)?target:'';}
+const choiceMarkup=new WeakMap();
+function updateChoices(select,markup){
+ if(choiceMarkup.get(select)===markup)return;
+ const previous=select.value;select.innerHTML=markup;choiceMarkup.set(select,markup);
+ select.value=[...select.options].some(option=>option.value===previous)?previous:'';
+}
+function options(){
+ const speech=active==='speech',meta=new Map(metadata.map(item=>[item.id,item]));
+ const trashedAssets=new Set(drafts.filter(d=>d.trashed).map(d=>d.assetId));
+ const available=a=>!meta.get(a.id)?.trashed&&!trashedAssets.has(a.id),label=a=>meta.get(a.id)?.name||a.name;
+ const uploads=assets.filter(a=>a.kind===(speech?'upload-speech':'upload-music')&&available(a));
+ const works=drafts.filter(d=>!d.trashed&&d.assetId&&!meta.get(d.assetId)?.trashed&&(speech?d.type==='speech':(!d.type||d.type==='songs'||d.type==='abc')));
+ updateChoices($('#studio-source'),'<option value="">上传音频文件</option>'+(works.length?'<optgroup label="我的创作">'+works.map(d=>'<option value="draft:'+esc(d.id)+'">'+esc(d.materialName||d.title)+'</option>').join('')+'</optgroup>':'')+(uploads.length?'<optgroup label="上传素材">'+uploads.map(a=>'<option value="asset:'+esc(a.id)+'">'+esc(label(a))+'</option>').join('')+'</optgroup>':''));
+ const voices=assets.filter(a=>['upload-speech','voice','speech'].includes(a.kind)&&available(a));
+ updateChoices($('#studio-target'),'<option value="">上传目标音色</option><optgroup label="预设音色">'+voicePresets.map(v=>'<option value="'+esc(v.id)+'">'+esc(v.name)+'</option>').join('')+'</optgroup>'+(voices.length?'<optgroup label="我的语音素材">'+voices.map(a=>'<option value="asset:'+esc(a.id)+'">'+esc(label(a))+'</option>').join('')+'</optgroup>':''));
+}
+let refreshQueued=false,saveQueued=false,detailQueued=false;
+function scheduleStudioRefresh(save=false,detail=false){
+ saveQueued||=save;detailQueued||=detail;if(refreshQueued)return;refreshQueued=true;
+ queueMicrotask(()=>{refreshQueued=false;const updateDetail=detailQueued;detailQueued=false;if(saveQueued){saveQueued=false;saveCloudState('workspace',workspaceState);}options();if(focused&&(updateDetail||$('#studio-plan>h3')?.textContent!==focused.plan.title))showPlan(focused);else renderList();});
+}
 function selected(type){const v=$('#studio-'+type).value;if(v.startsWith('draft:')){const d=drafts.find(d=>'draft:'+d.id===v);return d?{name:d.title,id:d.assetId,url:'/api/assets/'+encodeURIComponent(d.assetId),origin:'creation'}:null;}const preset=voicePresets.find(p=>p.id===v);if(preset)return{name:preset.name,id:preset.id,url:preset.url,origin:'preset'};if(v.startsWith('asset:')){const a=assets.find(a=>'asset:'+a.id===v);return a?{name:name(a),id:a.id,url:'/api/assets/'+encodeURIComponent(a.id),origin:'upload'}:null;}return local[type]?{name:local[type].name,url:urls[type],bytes:local[type].size,origin:'local'}:null;}
 function preview(type,enabled=true){const p=$('#studio-'+type+'-audio'),s=enabled?selected(type):null;p.pause();p.removeAttribute('src');p.load();p.hidden=!s;if(s)p.src=s.url;$('#studio-'+type+'-upload').hidden=!!$('#studio-'+type).value;}
 let messageTimer;function message(text){clearTimeout(messageTimer);$('#studio-message').textContent=text;if(text)messageTimer=setTimeout(()=>{$('#studio-message').textContent='';},5000);}
@@ -34,7 +54,7 @@ function previewArtwork(record){$('#studio-preview-art').innerHTML=`<div class="
 function applyStudioCovers(covers){
  let changed=false;
  for(const cover of covers){if(cover.targetType!=='song'||!isSavedArtwork(cover.art))continue;const previous=coverRecords.get(cover.targetId);coverRecords.set(cover.targetId,cover);if(history.some(r=>r.id===cover.targetId)&&(previous?.art!==cover.art||previous?.status!==cover.status)){changed=true;if(focused?.id===cover.targetId)previewArtwork(focused);}}
- if(changed)renderList();
+ if(changed)scheduleStudioRefresh();
 }
 function invalidate(){message('');}
 function showPlan(record){
@@ -82,24 +102,26 @@ document.querySelectorAll('#studio-form audio').forEach(player=>player.addEventL
 let studioPlayer=null;studioPlayer=initStudioPlayer({getTracks:()=>history.filter(r=>r.job?.audioURL&&!isHiddenJob(workspaceState,r.id)).map(r=>({id:r.id,title:r.plan.title,artist:r.plan.tool==='speech'?'Speech · Studio':'Songs · Studio',art:coverRecords.get(r.id)?.art||'liquid-glass.png',audioURL:r.job.audioURL,lyrics:r.plan.lyrics||'',type:r.plan.tool==='speech'?'speech':'songs',duration:r.job.input.duration||0})),toast:message,onChange:(id,playing)=>{if(playing)document.querySelectorAll('#studio-form audio').forEach(a=>a.pause());syncStudioPlayback();},getLiked:()=>(workspaceState.liked||[]).map(id=>id.replace('generation-','')),toggleLike:id=>{const key='generation-'+id;workspaceState.liked=(workspaceState.liked||[]).includes(key)?workspaceState.liked.filter(v=>v!==key):[...(workspaceState.liked||[]),key];saveCloudState('workspace',workspaceState);}});
  document.querySelectorAll('#studio-form audio').forEach(a=>a.addEventListener('play',()=>studioPlayer.pause()));
  initCreationInteractions({resolve:id=>history.find(r=>'generation-'+r.id===id&&r.job&&!isHiddenJob(workspaceState,r.id)),onMove:(id,target)=>target==='trash'?trashStudio(id.replace('generation-','')):null,onPlay:id=>studioPlayer.play(id.replace('generation-',''),false)});
- window.addEventListener('sanzo-cloud-update',event=>{if(event.detail.namespace==='workspace'){workspaceState=event.detail.data;drafts=workspaceState.drafts||[];generationSeen=workspaceState.generationSeen||[];options();if(focused?.job&&isHiddenJob(workspaceState,focused.id))closePreview();renderList();studioPlayer.refresh();}if(event.detail.namespace==='uploads'){metadata=event.detail.data?.items||[];options();}});
+ window.addEventListener('sanzo-cloud-update',event=>{if(event.detail.namespace==='workspace'){workspaceState=event.detail.data;drafts=workspaceState.drafts||[];generationSeen=workspaceState.generationSeen||[];const titles=new Map(drafts.map(d=>[d.jobId,d.materialName||d.title]));for(const record of history)if(record.job)record.plan.title=titles.get(record.id)||record.job.input.title;if(focused?.job&&isHiddenJob(workspaceState,focused.id))closePreview();scheduleStudioRefresh();studioPlayer.refresh();}if(event.detail.namespace==='uploads'){metadata=event.detail.data?.items||[];options();}});
  const coverControls=initCoverControls({toast:message,apply:applyStudioCovers});
 const seedVC=initStudioSeedVC({onError:text=>message(text),onInference:acceptInference,onJob:acceptStudioJob});
 function acceptStudioJob(job){
- if(drafts.some(d=>d.jobId===job.id&&d.trashed)||(generationSeen.includes(job.id)&&!drafts.some(d=>d.jobId===job.id)))return;
+ const existing=drafts.find(d=>d.jobId===job.id);
+ if(existing?.trashed){if(existing.assetId!==job.assetId||existing.jobStatus!==job.status||existing.jobError!==job.error){Object.assign(existing,{assetId:job.assetId||null,jobStatus:job.status,jobError:job.error,kind:job.assetId?'generated':'draft'});scheduleStudioRefresh(true);}return;}
+ if(!existing&&generationSeen.includes(job.id))return;
  if(['seedvc-speech','seedvc-song'].includes(job.input.model)){
   let draft=drafts.find(d=>d.jobId===job.id),changed=false;
   if(!draft){draft=draftFromJob(job);draft.createdAt=job.createdAt;drafts.unshift(draft);changed=true;}
   else if(draft.jobStatus!==job.status||draft.assetId!==job.assetId||draft.jobError!==job.error){Object.assign(draft,{jobStatus:job.status,jobError:job.error,assetId:job.assetId||null,kind:job.assetId?'generated':'draft'});changed=true;}
   if(!generationSeen.includes(job.id)){generationSeen.push(job.id);changed=true;}
-  if(changed){workspaceState.drafts=drafts;workspaceState.generationSeen=generationSeen;saveCloudState('workspace',workspaceState);}
+  if(changed){workspaceState.drafts=drafts;workspaceState.generationSeen=generationSeen;scheduleStudioRefresh(true);}
  }
  const input=job.input,cover=input.model==='yue2-cover',tool=cover?'cover':input.model==='seedvc-song'?'song':'speech';let record=history.find(r=>r.id===job.id);
  if(!record){record={id:job.id,files:{},values:{source:'asset:'+input.sourceAsset,target:cover?'':input.referenceAsset.startsWith('preset:')?input.referenceAsset:'asset:'+input.referenceAsset,styles:input.styles||'',lyrics:input.lyrics||'',language:input.language||'zh',title:input.autoTitle?'':input.title},plan:{tool,title:input.title,source:{name:input.sourceName||'原始音频',id:input.sourceAsset,origin:'upload'},reference:cover?null:{name:input.referenceName||'目标音色',id:input.referenceAsset,origin:'upload'},output:tools[tool].output}};history.unshift(record);}
  for(const [id,label,kind]of [[input.sourceAsset,input.sourceName,tool==='speech'?'upload-speech':'upload-music'],...(cover?[]:[[input.referenceAsset,input.referenceName,'upload-speech']])])if(!id.startsWith('preset:')&&!assets.some(a=>a.id===id))assets.push({id,name:label||'音频素材',kind});
  if(job.assetId&&!assets.some(a=>a.id===job.assetId))assets.push({id:job.assetId,name:input.title+'.mp3',kind:tool==='speech'?'speech':'music'});
  const changed=JSON.stringify(record.job)!==JSON.stringify(job);record.job=job;record.plan={...record.plan,title:drafts.find(d=>d.jobId===job.id)?.materialName||input.title,...(cover?{styles:input.styles||input.coverStyles,lyrics:input.lyrics,language:input.language,analysisJobId:input.analysisJobId,sourceAsset:input.sourceAsset,abcNotation:input.abcNotation}:{}),serviceConnected:true,prototype:false};
- if(changed){options();if(focused===record)showPlan(record);else renderList();}
+ if(changed)scheduleStudioRefresh(false,focused===record);
  if(cover&&['queued','running','succeeded'].includes(job.status)&&!coverRecords.has(job.id))coverControls.generate({type:'song',id:job.id},true);
 }
 initStudioCover({message,getContext:()=>[active,$('#studio-source').value,urls.source]});
@@ -110,8 +132,8 @@ function acceptInference(job){
  if(!record){record={id:job.id,files:{},values:{source:'asset:'+input.sourceAsset,target:'',styles:'',lyrics:'',title:''},plan:{tool:'cover',title:input.title,source:{id:input.sourceAsset,name:input.sourceName||'参考歌曲',origin:'upload'},output:'原曲歌词 · ABC 乐谱'}};history.unshift(record);}
  if(!assets.some(a=>a.id===input.sourceAsset))assets.push({id:input.sourceAsset,name:input.sourceName||'参考歌曲',kind:'upload-music'});
  const changed=JSON.stringify(record.job)!==JSON.stringify(job);record.job=job;record.plan={...record.plan,abcNotation:input.abcNotation||'',inferredLyrics:input.inferredLyrics||'',structuredLyrics:input.structuredLyrics,lyricsArrangement:input.lyricsArrangement,lyricsTimestamps:input.lyricsTimestamps,lyrics:bestLyrics(input),analysisJobId:job.id};record.values.lyrics=bestLyrics(input);
- if(changed){options();inference.update(job);if(focused===record)showPlan(record);else renderList();}
+ if(changed){inference.update(job);scheduleStudioRefresh(false,focused===record);}
 }
 window.addEventListener('beforeunload' ,event=>{if(submitting||inference.submitting()){event.preventDefault();event.returnValue='';}});refreshTool();renderList();initWorkspaceMotion();
 try{const [a,w,u]=await Promise.all([api('/api/assets'),openCloudState('workspace',{drafts:[],generationSeen:[],liked:[]}),openCloudState('uploads',{items:[]})]);assets=a.assets||[];workspaceState=w;drafts=w.drafts||[];generationSeen=w.generationSeen||[];metadata=u.items||[];options();preview('source');preview('target',['speech','song'].includes(active));await seedVC.load();const requested=history.find(r=>r.id===new URL(location.href).searchParams.get('edit'));if(requested){editRecord(requested);showPlan(requested);}refreshTool(true);}catch{$('#studio-library-note').textContent='暂时无法读取云端素材或任务，请稍后重试。';}
-window.addEventListener('pagehide',()=>Object.values(urls).filter(Boolean).forEach(url=>URL.revokeObjectURL(url)));
+window.addEventListener('pagehide',event=>{if(!event.persisted)Object.values(urls).filter(Boolean).forEach(url=>URL.revokeObjectURL(url));});

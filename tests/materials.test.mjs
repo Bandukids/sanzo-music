@@ -11,3 +11,7 @@ test('Studio 删除的作品写入统一回收站，恢复和清空后生成记�
  const d=recycleJob(state,job);assert.equal(d.id,'generation-task');assert.equal(d.assetId,'music-result');assert.equal(d.styles,'jazz');assert.equal(isHiddenJob(state,'task'),true);assert.equal(collectMaterials([{id:'music-result',kind:'music'}],state.drafts).length,0);recycleJob(state,job);assert.equal(state.drafts.length,1);d.trashed=false;assert.equal(isHiddenJob(state,'task'),false);state.drafts=[];assert.equal(isHiddenJob(state,'task'),true);
 });
 test('旧版清空留下的孤立音频不会重新出现在素材库，旧音色上传保留来源',()=>{const assets=[{id:'music-old-task',name:'已清空.mp3',kind:'music'},{id:'music-live-task',name:'新作品.mp3',kind:'music'},{id:'old-voice',name:'参考.mp3',kind:'voice'}];const list=collectMaterials(assets,[],{items:[]},['old-task']);assert.deepEqual(list.map(m=>m.id),['music-live-task','old-voice']);assert.equal(list[1].origin,'uploaded');});
+test('生成中的作品移入回收站后，晚到的音频不会作为孤立素材重新出现',()=>{
+ const draft={id:'generation-late',jobId:'late',assetId:null,trashed:true};
+ assert.deepEqual(collectMaterials([{id:'music-late',name:'晚到.mp3',kind:'music'}],[draft],{items:[]},['late']),[]);
+});

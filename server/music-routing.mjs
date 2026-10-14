@@ -34,16 +34,23 @@ export function rankMusicProviders(model,env,stats,excluded=[],now=Date.now()) {
  }).filter(p=>!p.cooling&&p.active<p.capacity).sort((a,b)=>a.score-b.score||a.assigned-b.assigned||(a.id==='cn'?-1:1));
 }
 export async function routingStats(sql) {
- const stats={};
- const history=(await sql('SELECT provider,input,status,usage,updated_at FROM generations ORDER BY created_at DESC LIMIT 100').all()).results;
- for(const id of Object.keys(MUSIC_PROVIDERS)){
-  const active=await sql("SELECT ((SELECT COUNT(*) FROM generations WHERE provider=? AND status IN ('submitting','queued','running'))+(SELECT COUNT(*) FROM covers WHERE provider=? AND status IN ('submitting','queued','running'))) AS count",id,id).first();
-  const recent=history.flatMap(row=>{
-   let attempts;try{attempts=JSON.parse(row.input).routingAttempts;}catch{}
-   if(!Array.isArray(attempts))return row.provider===id?[row]:[];
-   return attempts.filter(a=>a.provider===id).map(a=>({status:a.outcome==='rejected'?'failed':a.outcome==='unknown'?'unknown':row.status,usage:row.provider===id?row.usage:null,updated_at:a.outcome==='accepted'?row.updated_at:a.at}));
-  }).slice(0,12);
-  stats[id]={active:active.count,assigned:recent.length,recent};
+ const [history,active]=await Promise.all([
+  sql('SELECT provider,input,status,usage,updated_at FROM generations ORDER BY created_at DESC LIMIT 100').all(),
+  sql("SELECT provider,COUNT(*) AS count FROM (SELECT provider FROM generations WHERE status IN ('submitting','queued','running') UNION ALL SELECT provider FROM covers WHERE status IN ('submitting','queued','running')) GROUP BY provider").all()
+ ]);
+ const counts=new Map(active.results.map(row=>[row.provider,row.count]));
+ const stats=Object.fromEntries(Object.keys(MUSIC_PROVIDERS).map(id=>[id,{active:counts.get(id)||0,assigned:0,recent:[]} ]));
+ for(const row of history.results){
+  let attempts;try{attempts=JSON.parse(row.input).routingAttempts;}catch{}
+  if(!Array.isArray(attempts)){
+   if(stats[row.provider]?.recent.length<12)stats[row.provider].recent.push(row);
+   continue;
+  }
+  for(const attempt of attempts){
+   const recent=stats[attempt.provider]?.recent;
+   if(recent&&recent.length<12)recent.push({status:attempt.outcome==='rejected'?'failed':attempt.outcome==='unknown'?'unknown':row.status,usage:row.provider===attempt.provider?row.usage:null,updated_at:attempt.outcome==='accepted'?row.updated_at:attempt.at});
+  }
  }
+ for(const state of Object.values(stats))state.assigned=state.recent.length;
  return stats;
 }
