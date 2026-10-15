@@ -1,0 +1,13 @@
+.git
+.env*
+.deploy.env
+.sanzo-data
+.sanzo-backups
+.sites-runtime
+node_modules
+dist/client
+dist/server
+dist/.openai
+output
+*.log
+*.tar.gz

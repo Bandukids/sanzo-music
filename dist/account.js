@@ -16,3 +16,7 @@ $('#profile-form').addEventListener('submit',async event=>{event.preventDefault(
 $('#export-data').addEventListener('click',()=>downloadJSON({exportedAt:new Date().toISOString(),profile,documents},'sanzo-my-data.json'));
 $('#import-local').addEventListener('click',async()=>{$('#import-local').disabled=true;try{const result=await importLegacy(message=>feedback('#import-feedback',message));await load();feedback('#import-feedback',`导入完成，已保存 ${result.uploaded} 段音频。`+(result.missing?` ${result.missing} 段本地文件缺失，请重新上传。`:'本地原件已保留。'));}catch(error){feedback('#import-feedback',error.message+' 已保存部分会保留，可再次导入。',true);}finally{$('#import-local').disabled=false;}});
 await load();
+
+const logout=document.querySelector('a[href^="/signout-with-chatgpt"]');
+logout?.addEventListener('click',async event=>{event.preventDefault();try{await api('/api/auth/logout',{method:'POST'});location.assign('/login/');}catch(error){feedback('#profile-feedback',error.message,true);}});
+api('/api/auth/session').then(({user})=>{if(user.role==='admin')document.querySelector('#admin-entry').hidden=false;}).catch(()=>{});

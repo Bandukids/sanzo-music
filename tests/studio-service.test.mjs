@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {build} from 'esbuild';
 import {fileURLToPath} from 'node:url';
 import {randomUUID} from 'node:crypto';
-const bundle=await build({entryPoints:[fileURLToPath(new URL('../dist/studio-seedvc.js',import.meta.url))],bundle:true,write:false,format:'iife',globalName:'studio',plugins:[{name:'frontend-root',setup(b){b.onResolve({filter:/^\//},args=>({path:fileURLToPath(new URL('../dist'+args.path,import.meta.url))}));}}]});
+const bundle=await build({entryPoints:[fileURLToPath(new URL('../dist/studio-seedvc.js',import.meta.url))],bundle:true,write:false,format:'iife',globalName:'studio',plugins:[{name:'frontend-root',setup(b){b.onResolve({filter:/^\//},args=>args.kind==='entry-point'?undefined:({path:fileURLToPath(new URL('../dist'+args.path,import.meta.url))}));}}]});
 const response=value=>new Response(JSON.stringify(value),{headers:{'Content-Type':'application/json'}});
 const deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 function service(fetcher,initial='{}'){

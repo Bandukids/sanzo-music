@@ -15,7 +15,9 @@ Sounds / Woosh 和模型训练目前暂未开放。Studio 的 Cover、Speech 和
 
 ## 本地运行
 
-需要 Node.js 22 或更新版本，以及 npm。
+在 Mac / Docker / NAS 上运行受邀制站点，请先阅读 [独立部署说明](docs/self-hosting.md)。Node 服务已改为真实账号、原生 SQLite 和媒体目录，不再自动登录共享开发账号。首次运行需执行 `npm run setup:selfhost -- --email 管理员邮箱 --media 媒体绝对路径`。
+
+需要 Node.js 24 和 npm。
 
 ```sh
 npm ci
@@ -27,7 +29,7 @@ npm ci
 npm run dev
 ```
 
-打开终端打印的本地地址。开发服务仅监听 `127.0.0.1`，本地 D1 / R2 数据保存在被 Git 忽略的 `.sites-runtime/`，不会读取线上用户数据。
+打开终端打印的本地地址，使用一次性邀请设置密码后登录。服务默认仅监听 `127.0.0.1`，原生 SQLite 默认保存在被 Git 忽略的 `.sanzo-data/`，媒体位置由 `MEDIA_ROOT` 指定。旧 `.sites-runtime/` 开发数据保留，不会读取原网站线上用户数据。
 
 ```sh
 npm test

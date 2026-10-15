@@ -9,3 +9,7 @@ output/
 dist/client/
 dist/server/
 dist/.openai/
+
+.sanzo-data/
+.sanzo-backups/
+.deploy.env

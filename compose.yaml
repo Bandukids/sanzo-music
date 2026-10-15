@@ -1,0 +1,46 @@
+name: sanzo
+services:
+  app:
+    build: .
+    image: sanzo-music:local
+    user: "${SANZO_UID:-1000}:${SANZO_GID:-1000}"
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 20s
+    read_only: true
+    env_file: .env.local
+    environment:
+      HOST: 0.0.0.0
+      PORT: "4173"
+      DATA_DIR: /data
+      MEDIA_ROOT: /media
+    ports:
+      - "127.0.0.1:4173:4173"
+    volumes:
+      - db:/data
+      - type: bind
+        source: ${NAS_MEDIA_ROOT:?Set NAS_MEDIA_ROOT in .deploy.env}
+        target: /media
+        bind:
+          create_host_path: false
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/healthz',{headers:{Host:new URL(process.env.PUBLIC_ORIGIN).host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 8s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  db:
+    name: ${SANZO_DB_VOLUME:-sanzo_db}
+    external: true

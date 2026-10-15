@@ -1,0 +1,11 @@
+import {execFileSync} from 'node:child_process';
+import {chmod,mkdir} from 'node:fs/promises';
+import {resolve,basename} from 'node:path';
+import {validEmail} from '../server/auth.mjs';
+const email=process.argv[2];if(!validEmail(email))throw Error('Usage: node scripts/invite-docker.mjs admin@example.com');
+const env={...process.env,DOCKER_CONTEXT:'colima-sanzo'};
+const id=execFileSync('/opt/homebrew/bin/docker-compose',['--env-file','.deploy.env','ps','-q','app'],{env,encoding:'utf8'}).trim();if(!id)throw Error('应用容器尚未启动。');
+const output=execFileSync('/opt/homebrew/bin/docker',['exec',id,'node','scripts/invite.mjs',email],{env,encoding:'utf8'});
+const file=output.match(/\/data\/invite-[a-f0-9-]+\.txt/)?.[0];if(!file)throw Error('无法定位设置链接文件。');
+await mkdir('.sanzo-data',{recursive:true,mode:0o700});const local=resolve('.sanzo-data',basename(file));
+execFileSync('/opt/homebrew/bin/docker',['cp',id+':'+file,local],{env,stdio:'inherit'});await chmod(local,0o600);console.log('一次性设置链接已保存至 '+local);

@@ -46,7 +46,7 @@ export async function handleLibrary(request,env) {
  try {
   const store=new DataStore(env.DB),profile=await store.profile(user);
   if(url.pathname==='/api/account'){
-   if(method==='GET')return json({profile:{id:profile.id,email:profile.email,name:profile.name,createdAt:profile.created_at},storage:{used:profile.bytes,limit:STORAGE_LIMIT},local:env.LOCAL_PREVIEW===true});
+   if(method==='GET')return json({profile:{id:profile.id,email:profile.email,name:profile.name,createdAt:profile.created_at},storage:{used:profile.bytes,limit:profile.quota??STORAGE_LIMIT},local:env.LOCAL_PREVIEW===true,selfHosted:env.SELF_HOSTED===true});
    if(method==='PUT'){const body=await readJSON(request);if(typeof body.name!=='string'||!body.name.trim()||body.name.trim().length>60)return failure('昵称需为 1–60 个字符。');await store.rename(user.id,body.name.trim());return json({name:body.name.trim()});}
    return failure('不支持此操作。',405);
   }
@@ -131,7 +131,7 @@ export async function handleLibrary(request,env) {
      const written=await env.BUCKET.put(key,payload,{httpMetadata:{contentType:types[ext]}});
      if(written.size!==bytes)throw Error('Audio size did not match');
      await store.finishAsset(user.id,id);return json({id,bytes},201);
-    }catch(error){await env.BUCKET.delete(key);if(started)await store.cancelAsset(user.id,id);await store.release(user.id,bytes);throw error;}
+    }catch(error){try{await env.BUCKET.delete(key);}catch{throw error;}if(started)await store.cancelAsset(user.id,id);await store.release(user.id,bytes);throw error;}
    }return failure('不支持此操作。',405);
   }
   return failure('未找到此接口。',404,'NOT_FOUND');
