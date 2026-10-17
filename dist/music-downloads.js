@@ -5,7 +5,7 @@ export const downloadName=title=>String(title).replace(/[\\/:*?"<>|\u0000-\u001f
 const stamp=seconds=>{const ticks=Math.max(0,Math.round(seconds*100));return '['+String(Math.floor(ticks/6000)).padStart(2,'0')+':'+String(Math.floor(ticks/100)%60).padStart(2,'0')+'.'+String(ticks%100).padStart(2,'0')+']';};
 export function lyricsFile(track) {
  const parsed=lyricCues(track);if(!parsed.lines.length)return null;
- return '[ti:'+track.title.replace(/[\r\n\[\]]/g,'')+']\n[ar:'+track.artist.replace(/[\r\n\[\]]/g,'')+']\n[re:SANZO 示例歌词，演示音频为器乐]\n'+parsed.lines.map(line=>stamp(line.at)+line.text).join('\n')+'\n';
+ return '[ti:'+track.title.replace(/[\r\n\[\]]/g,'')+']\n[ar:'+track.artist.replace(/[\r\n\[\]]/g,'')+']\n[re:SANZO '+(parsed.demo?'示例歌词':parsed.estimated?'歌词时间为估算，未逐句对齐':'同步歌词')+']\n'+parsed.lines.map(line=>stamp(line.at)+line.text).join('\n')+'\n';
 }
 export function waveFile(buffer) {
  const channels=buffer.numberOfChannels, frames=buffer.length;

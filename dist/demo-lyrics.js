@@ -1,5 +1,5 @@
-// Original prototype lyrics. The synthesized demo audio contains no vocals.
-const songs = {
+// Original lyrics shared by the curated YUE2 songs and legacy previews.
+export const communityLyrics = {
  blue:['把黄昏轻轻折进风里','留一盏灯，等城市安静','街角的蓝，落在你眼底','每一次心跳，都有回音','我们把时间调成慢镜','让未说的话，跟着光旅行','等到星星落进这旋律','这一刻，只属于我和你'],
  afterglow:['霓虹越过最后一道天际','晚风把心事吹成透明','沿着光，沿着你的声音','我们在余晖里慢慢靠近','把夜色写成一段旋律','让回忆在指尖重新亮起','世界很远，你却很清晰','光散去以后，我仍在这里'],
  deep:['海面把月光轻轻合上','我向没有边界的蓝眺望','每一段沉默都有回响','每一次呼吸都慢慢变长','让潮水带走昨日的重量','在深处找到自己的方向','如果世界暂时没有声响','就让心跳成为我的光'],
@@ -14,7 +14,7 @@ const songs = {
  horizon:['一颗琴音在晨雾中落下','群山慢慢让出了天涯','我把勇气装进旧行囊','向着地平线，继续出发','越过山脊，越过风的回响','让远方成为新的故乡','当第一束光落在肩上','我终于听见自己的方向']
 };
 export function demoLyricCues(track) {
- const text=songs[track.id];if(!text)return [];
+ const text=communityLyrics[track.id];if(!text)return [];
  const lines=[...text,...text,...text,...text], span=Math.max(1,track.duration-8);
  return lines.map((text,i)=>({text,at:Math.round(i*span/lines.length*100)/100}));
 }

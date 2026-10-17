@@ -33,7 +33,8 @@ export function createApp(env,{origin='http://127.0.0.1:4173',root=resolve('dist
     if(Number(req.headers['content-length'])>limit)return await send(json({error:{message:'请求内容过大。'}},413));
     const request=new Request(url,{method:req.method,headers,...(['GET','HEAD'].includes(req.method)?{}:{body:Readable.toWeb(req),duplex:'half'})});
     if(url.pathname.startsWith('/api/auth/')||url.pathname.startsWith('/api/admin/'))return await send(await handleAuth(request,env,user,{client:req.socket.remoteAddress||'local'}));
-    if(!user)return await send(json({error:{code:'SIGN_IN',message:'请先登录。'}},401));
+    const publishedRead=(req.method==='GET'&&url.pathname==='/api/releases')||(['GET','HEAD'].includes(req.method)&&/^\/api\/releases\/[a-f0-9-]{36}\/(audio|cover)$/.test(url.pathname));
+    if(!user&&!publishedRead)return await send(json({error:{code:'SIGN_IN',message:'请先登录。'}},401));
     if(!['GET','HEAD'].includes(req.method)){
      if(headers.get('origin')&&headers.get('origin')!==publicURL.origin||headers.get('sec-fetch-site')==='cross-site')return await send(json({error:{message:'请从本站发起操作。'}},403));
      if(/^\/api\/(generations|covers|assets)(\/|$)/.test(url.pathname))await env.BUCKET.check();
@@ -42,15 +43,15 @@ export function createApp(env,{origin='http://127.0.0.1:4173',root=resolve('dist
       if(profile.quota-profile.bytes<8388608)return await send(json({error:{message:'剩余空间不足 8 MB，请清理素材后再生成。'}},413));
      }
     }
-    const internalHeaders=new Headers(headers);internalHeaders.set('oai-authenticated-user-id',user.id);internalHeaders.set('oai-authenticated-user-email',user.email);internalHeaders.set('cf-connecting-ip',user.id);
+    const internalHeaders=new Headers(headers);if(user){internalHeaders.set('oai-authenticated-user-id',user.id);internalHeaders.set('oai-authenticated-user-email',user.email);internalHeaders.set('cf-connecting-ip',user.id);}
     const internal=new Request(request,{headers:internalHeaders});
     const handler=url.pathname==='/api/assistant'?handleAssistant:url.pathname.startsWith('/api/generations')?handleGenerations:url.pathname.startsWith('/api/releases')?handleReleases:url.pathname.startsWith('/api/covers')?handleCovers:handleLibrary;
     return await send(await handler(internal,env));
    }
    if(!['GET','HEAD'].includes(req.method))return await send(new Response(null,{status:405}));
-   if(url.pathname==='/signout-with-chatgpt')return await send(new Response(null,{status:302,headers:{Location:'/account/'}}));
+   if(url.pathname==='/signout-with-chatgpt')return await send(new Response(null,{status:302,headers:{Location:'/'}}));
    if(url.pathname==='/signin-with-chatgpt')return await send(new Response(null,{status:302,headers:{Location:'/login/'}}));
-   if(!user&&!['/login','/login/','/login/index.html'].includes(url.pathname)&&(url.pathname.endsWith('/')||url.pathname.endsWith('.html')||!extname(url.pathname)))return await send(new Response(null,{status:302,headers:{Location:'/login/'}}));
+   if(!user&&/^\/(account|admin)(?:\/|$)/.test(url.pathname))return await send(new Response(null,{status:302,headers:{Location:'/login/?next='+encodeURIComponent(url.pathname+url.search)}}));
    let pathname;try{pathname=decodeURIComponent(url.pathname);}catch{return await send(new Response(null,{status:400}));}
    if(pathname.split('/').some(part=>part.startsWith('.')&&part))return await send(new Response(null,{status:404}));
    let file=resolve(root,'.'+pathname);if(file!==root&&!file.startsWith(root+sep))return await send(new Response(null,{status:403}));

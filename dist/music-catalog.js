@@ -1,4 +1,5 @@
-// Shared demo catalogue: Explore and Library resolve the same song IDs.
+import {communityAudio} from './community-audio.js';
+// Shared curated catalogue: covers and song IDs stay stable across audio updates.
 export const communityTracks = [
  {id:'blue',title:'Blue Hour',artist:'Luna Waves',creator:'luna',style:'chill',tags:['Lo-fi','Electronic'],art:'forest.jpg',cover:'forest',caption:'blue\nhour.',duration:204,prompt:'蓝调时刻的城市，温暖的 Lo-fi 节奏，轻柔合成器和微风般的旋律。',plays:84200,likes:2810,score:96,fresh:7,model:'ACE-Step-V15-XL',accent:'#638eb5'},
  {id:'afterglow',title:'Afterglow',artist:'NEON / 霓虹',creator:'neon',style:'electronic',tags:['Electronic','Dreamy'],art:'liquid-glass.png',cover:'glass',caption:'AFTER\nGLOW',duration:186,prompt:'日落之后，城市的声音慢慢变轻。流动的合成器、温暖的低音，留住光散去之前的最后一刻。',plays:126400,likes:4230,score:99,fresh:12,model:'MiniMax-Music-3',accent:'#fa975b'},
@@ -12,7 +13,7 @@ export const communityTracks = [
  {id:'postcard',title:'夏日明信片',artist:'Oliver Chen',creator:'oliver',style:'pop',tags:['Indie Pop','Acoustic'],art:'coast.jpg',cover:'sunset',caption:'夏日\n明信片',duration:177,prompt:'一张来自夏天的明信片。轻快的原声吉他，装着阳光、海岸和没有说完的话。',plays:39700,likes:1870,score:89,fresh:13,model:'MiniMax-Music-3',accent:'#df9564'},
  {id:'rain',title:'Rain on Tape',artist:'Luna Waves',creator:'luna',style:'chill',tags:['Lo-fi','Piano'],art:'forest.jpg',cover:'forest',caption:'rain\non tape.',duration:189,prompt:'雨落在窗边，磁带里留下细碎的钢琴声。适合读书、发呆，以及想念。',plays:58900,likes:2530,score:95,fresh:11,model:'ACE-Step-V15-XL',accent:'#638eb5'},
  {id:'horizon',title:'Beyond the Horizon',artist:'Echo Studio',creator:'echo',style:'cinematic',tags:['Cinematic','Orchestral'],art:'mountains.jpg',cover:'dream',caption:'BEYOND\nTHE HORIZON',duration:256,prompt:'从一颗安静的钢琴音开始，越过山脊，走向辽阔的交响声场。',plays:24500,likes:1160,score:88,fresh:17,model:'YUE2',accent:'#6e8cbd'}
-];
+].map(track=>({...track,...communityAudio[track.id]}));
 export const creators = [
  {id:'neon',name:'NEON / 霓虹',initial:'N',art:'liquid-glass.png',description:'把城市的光，写进电子旋律。',genre:'Electronic',followers:'24.8k',tracks:2},
  {id:'luna',name:'Luna Waves',initial:'L',art:'forest.jpg',description:'给每一个安静的夜晚。',genre:'Lo-fi',followers:'18.6k',tracks:2},

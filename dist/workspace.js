@@ -7,6 +7,7 @@ import { initSongPreview } from '/song-preview.js';
 import { patchCreationList } from '/stable-dom.js';
 import { createPlaybackClock } from '/playback-clock.js';
 import { SoundEngine } from '/sound-engine.js';
+import {requireSignIn} from './auth-session.js';
 import { initCollections } from '/creator-collections.js';
 import { initSpeechControls } from '/speech-controls.js';
 import { initABCControls, abcOutputLabel } from '/abc-controls.js';
@@ -175,6 +176,7 @@ function loadDraft(id) { const d=state.drafts.find(d=>d.id===id);if(!d||d.trashe
 function describeForm(form) { return form.type==='abc'?(form.abcPrompt.trim()||'ABC 乐谱 · '+(form.abcNotation.match(/^T:\s*(.+)$/m)?.[1]||'新的旋律')):form.type==='speech'?(form.speechModel==='design'?form.designText.trim():form.speechModel==='rvc'?'声音转换 · '+(form.speechReference||'待选择音频')+' · '+(form.conversionModel==='svc'?'SVC 参考音色 · '+(form.svcName||'待选择'):$('#rvc-voice').selectedOptions[0].text):form.speechText.trim()):form.type==='sounds'?(form.soundPrompt.trim()||'视频参考 · '+(form.soundReference||'待选择视频')):form.description.trim(); }
 function resetDraftFilters(){collections.showAll();}
 async function generatePreview() {
+ try{if(!await requireSignIn())return;}catch(error){toast(error.message);return;}
  if(busy||isAssistantBusy())return;let form=readForm();if(form.type==='sounds'&&!WOOSH_AVAILABLE){toast('Woosh 音效生成暂不可用，恢复后再开放。');return;}
  if(form.type==='abc'){await abcControls.generate(form);return;}
  if(form.type==='songs'&&!form.description.trim()){toast(mode==='simple'?'描述一下你想听见的歌曲。':'填写歌词或音乐风格，开始这次创作。');setMode('simple');$('#song-description').focus();return;}
@@ -463,7 +465,10 @@ async function generateABC(form) {
 }
 const abcControls=initABCControls({readForm,onChange:updateFormStatus,onRefresh:refreshABCWritingOptions,onSave:saveABCResult,onGenerate:generateABC,listDrafts:()=>state.drafts,findDraft:id=>state.drafts.find(d=>d.id===id),onEdit:loadDraft,toast,beforePlay:()=>{if(playing)pause();}});
 fillForm(state.form);
+window.addEventListener('sanzo-before-sign-in',()=>{try{sessionStorage.setItem('sanzo-pending-form',JSON.stringify(readForm()));}catch{}});
 try {
+ const pendingForm=sessionStorage.getItem('sanzo-pending-form');
+ if(pendingForm){sessionStorage.removeItem('sanzo-pending-form');fillForm({...defaultForm(),...JSON.parse(pendingForm)});}
  const briefText=sessionStorage.getItem('sanzo-pending-brief');
  if(briefText){
    sessionStorage.removeItem('sanzo-pending-brief');

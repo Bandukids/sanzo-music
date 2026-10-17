@@ -1,6 +1,8 @@
+import {requireSignIn,clearAuthSession} from './auth-session.js';
 let pending = false;
 export const isAssistantBusy = () => pending;
 export async function requestAssistant(input) {
+  if(!await requireSignIn())throw Error('登录后即可使用 AI 创作。');
   if (pending) throw new Error('请等待当前 AI 任务完成。');
   pending = true;
   const controller = new AbortController();
@@ -9,7 +11,7 @@ export async function requestAssistant(input) {
     const response = await fetch('/api/assistant', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: controller.signal });
     let data;
     try { data = await response.json(); } catch { throw new Error('AI 服务暂不可用，请稍后重试。'); }
-    if (!response.ok) throw new Error(data.error?.message || 'AI 服务暂不可用，请稍后重试。');
+    if (!response.ok) {if(response.status===401){clearAuthSession();await requireSignIn();}throw new Error(data.error?.message || 'AI 服务暂不可用，请稍后重试。');}
     if (!data.result || typeof data.result !== 'object') throw new Error('AI 没有返回完整结果，请重试。');
     return data.result;
   } catch (error) {

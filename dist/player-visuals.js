@@ -17,7 +17,7 @@ export function lyricCues(track) {
     } else plain.push(words);
   }
   const lines=timed.length?timed.filter(l=>l.at<track.duration).sort((a,b)=>a.at-b.at):plain.map((text,i)=>({at:i*track.duration/Math.max(plain.length,1),text}));
-  return {lines,label:lines.length?'草稿歌词':'暂无歌词',estimated:!timed.length};
+  return {lines,label:lines.length?(track.generated||track.published?'歌曲歌词':'草稿歌词'):'暂无歌词',estimated:!timed.length};
 }
 
 export function initPlayerLyrics({seek}) {
@@ -64,7 +64,7 @@ export function initPlayerLyrics({seek}) {
       details.dataset.hasLyrics=String(cues.length>0);
       document.querySelector('#lyric-mode').textContent=parsed.label;
       document.querySelector('#lyrics-track-title').textContent=t.title;
-      document.querySelector('#lyrics-note').textContent=cues.length?`演示音轨为器乐，歌词用于界面预览。${parsed.estimated?'时间轴按进度编排。':'时间轴来自歌词标记。'}点击一句可跳转。`:t.instrumental?'这是一首纯音乐，让旋律替你表达。':'这首演示音轨暂无歌词，先沉浸在声音里。';
+      document.querySelector('#lyrics-note').textContent=cues.length?(parsed.demo?'示例歌词，仅用于界面预览。':parsed.estimated?'歌词位置按播放进度估算，并非逐句对齐。':'歌词按时间标记同步，点击可跳转。'):t.instrumental?'这是一首纯音乐，让旋律替你表达。':'这首作品暂无歌词，先沉浸在声音里。';
       linesBox.replaceChildren();
       if (cues.length) {
         cues.forEach(cue=>{

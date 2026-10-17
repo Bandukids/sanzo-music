@@ -2,6 +2,7 @@ import { initWorkspaceMotion } from '/workspace-motion.js';
 import { storeAudio, audioURL } from '/training-audio-store.js';
 import { initTrainingPlayer } from '/training-player.js';
 import { openCloudState, saveCloudState } from '/cloud-state.js';
+import {requireSignIn} from './auth-session.js';
 const $=selector=>document.querySelector(selector), $$=selector=>[...document.querySelectorAll(selector)];
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=name=>'<svg aria-hidden="true"><use href="#i-'+name+'"/></svg>';
@@ -109,8 +110,8 @@ $('#move-assets').addEventListener('click',()=>moveAssets(selectedAssets().map(a
 $('#rename-form').addEventListener('submit',e=>{e.preventDefault();const name=$('#asset-name').value.trim();if(!name){$('#asset-name').value='';$('#asset-name').reportValidity();return;}if(!editingAsset)return;editingAsset.name=name.slice(0,120);save();renderAssets();$('#asset-dialog').close();toast('素材名称已更新。');});
 $('#asset-detail-play').addEventListener('click',()=>{const id=editingAsset?.id;if(!id)return;$('#asset-dialog').close();materialPlayer.playAsset(id);});
 $('#asset-dialog').addEventListener('close',()=>{editingAsset=null;});
-$('#training-form').addEventListener('submit',e=>{
- e.preventDefault();const chosen=selectedAssets(),name=$('#model-name').value.trim();if(!name){$('#model-name').value='';$('#model-name').reportValidity();return;}if(!chosen.length)return;
+$('#training-form').addEventListener('submit',async e=>{
+ e.preventDefault();try{if(!await requireSignIn())return;}catch(error){toast(error.message);return;}const chosen=selectedAssets(),name=$('#model-name').value.trim();if(!name){$('#model-name').value='';$('#model-name').reportValidity();return;}if(!chosen.length)return;
  const t={id:crypto.randomUUID(),name:name.slice(0,60),kind,count:chosen.length,duration:chosen.reduce((n,a)=>n+(a.duration||0),0),assets:chosen.map(a=>({id:a.id,name:a.name})),source:'demo',status:'running',progress:0,config:{base:kind==='voice'?'RVC v2':'YUE2',iterations:Number($('#iterations').value),preset,batch:Number($('#batch-size').value),...(kind==='voice'?{pitch:$('#pitch-method').value}:{rank:Number($('#lora-rank').value)})}};
  state.tasks.unshift(t);save();switchView('tasks');toast('训练流程演示已开始。');
 });

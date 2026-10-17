@@ -27,8 +27,8 @@ export function initImmersiveLyrics({ seek }) {
       clearTimeout(allowBrowsing.timer);follow.setAttribute('aria-pressed','true');follow.textContent='自动跟随';
       document.querySelector('#immersive-lyrics-label').textContent = parsed.label;
       document.querySelector('#immersive-lyrics-note').textContent = cues.length
-        ? (parsed.demo ? '示例歌词 · 演示音频为器乐，时间轴用于预览。' : parsed.estimated ? '歌词按播放进度编排，点击可跳转。' : '歌词按 LRC 时间标记同步，点击可跳转。')
-        : '这首器乐演示暂无歌词。';
+        ? (parsed.demo ? '示例歌词 · 时间轴用于预览。' : parsed.estimated ? '歌词位置按播放进度估算，并非逐句对齐。' : '歌词按 LRC 时间标记同步，点击可跳转。')
+        : '这首作品暂无歌词。';
       linesBox.replaceChildren();
       linesBox.hidden = !cues.length;
       empty.hidden = !!cues.length;

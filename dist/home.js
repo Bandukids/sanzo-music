@@ -2,6 +2,7 @@ import {TRAINING_AVAILABLE} from '/service-availability.js';
 if(!TRAINING_AVAILABLE)document.querySelectorAll('a[href="/training/"]').forEach(a=>{const badge=document.createElement('small');badge.className='training-status';badge.textContent='暂未开放';a.append(' ',badge);});
 import {requestAssistant,withAIButton,isAssistantBusy} from '/ai-assistant.js';
 import {initAccountControls} from '/account-controls.js';
+import {requireSignIn} from './auth-session.js';
 initAccountControls();
 const hero = document.querySelector('.cinema-hero');
 const video = document.querySelector('#hero-video');
@@ -120,6 +121,8 @@ requestAnimationFrame(() => requestAnimationFrame(() => {
 }));
 
 const promptField = document.querySelector('#song-prompt');
+try{const pending=sessionStorage.getItem('sanzo-pending-prompt');if(pending&&!promptField.value)promptField.value=pending.slice(0,500);}catch{}
+window.addEventListener('sanzo-before-sign-in',()=>stageCreativeContent());
 const promptComposer = document.querySelector('#home-create-form');
 const composerPointer = matchMedia('(min-width: 701px) and (hover: hover) and (pointer: fine)');
 let composerLightFrame = 0;
@@ -257,6 +260,7 @@ document.querySelector('#home-polish').addEventListener('click',async event=>{
   const original=promptField.value;
   if(!original.trim()){promptField.focus({preventScroll:true});homeAIMessage('先描述一下你想听见的歌曲。','error');return;}
   try {
+    if(!await requireSignIn({returnTo:'/',beforeRedirect:stageCreativeContent}))return;
     await withAIButton(event.currentTarget,'润色中…',async()=>{
       homeAIMessage('AI 正在为你的灵感写出分段歌词与曲风…');
       const result=await requestAssistant({action:'brief',kind:'songs',text:original});
@@ -276,6 +280,7 @@ document.querySelector('#home-create-form').addEventListener('submit', async eve
     return;
   }
   const original=promptField.value;
+  try{if(!await requireSignIn({returnTo:'/create/',beforeRedirect:stageCreativeContent}))return;}catch(error){homeAIMessage(error.message,'error');return;}
   if (preparedBrief && original === preparedPrompt) {
     if (stageCreativeContent()) location.assign('/create/');
     return;

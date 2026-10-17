@@ -1,10 +1,12 @@
 import { mergeState } from '/state-merge.js';
+import {requireSignIn,clearAuthSession} from './auth-session.js';
 const sessions=new Map();
 const channel=typeof BroadcastChannel==='function'?new BroadcastChannel('sanzo-cloud'):null;
 export async function api(path,options={}) {
+ const mutation=!['GET','HEAD'].includes((options.method||'GET').toUpperCase());
  const response=await fetch(path,{credentials:'same-origin',cache:'no-store',...options});
  const result=await response.json();
- if(!response.ok){const error=Error(result.error?.message||'云端服务暂不可用。');error.status=response.status;error.code=result.error?.code;error.current=result.current;throw error;}
+ if(!response.ok){if(response.status===401){clearAuthSession();if(mutation)await requireSignIn();}const error=Error(result.error?.message||'云端服务暂不可用。');error.status=response.status;error.code=result.error?.code;error.current=result.current;throw error;}
  return result;
 }
 const copy=value=>JSON.parse(JSON.stringify(value));
@@ -14,7 +16,7 @@ export async function openCloudState(namespace,fallback={}) {
  const s={data:copy(fallback),base:null,revision:0,ready:false,dirty:false,timer:null,running:null,failed:null};sessions.set(namespace,s);
  s.loading=(async()=>{
   try{const loaded=await api('/api/state/'+namespace);s.data=loaded.data??copy(fallback);s.base=copy(loaded.data);s.revision=loaded.revision;s.ready=true;status(namespace,'saved');}
-  catch(error){s.failed=error;status(namespace,'error',error.message);}
+  catch(error){if(error.status===401){s.guest=true;status(namespace,'guest');}else{s.failed=error;status(namespace,'error',error.message);}}
  })();
  await s.loading;
  return copy(s.data);
@@ -24,6 +26,7 @@ export const cloudStateReady=namespace=>sessions.get(namespace)?.ready===true;
 export function saveCloudState(namespace,data) {
  const s=sessions.get(namespace);if(!s)return;
  const next=copy(data);if(JSON.stringify(next)===JSON.stringify(s.data))return;
+ if(s.guest){s.data=next;return;}
  s.data=next;s.dirty=true;clearTimeout(s.timer);status(namespace,'pending');
  s.timer=setTimeout(()=>flushCloudState(namespace).catch(()=>{}),700);
 }

@@ -1,4 +1,5 @@
 import { api, exportPending, flushCloudState } from '/cloud-state.js';
+import {loginURL} from './auth-routing.js';
 const sync=new Map();
 export function downloadJSON(data,name) {const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export function initAccountControls() {
@@ -13,7 +14,8 @@ export function initAccountControls() {
  const message=document.createElement('span');const retry=document.createElement('button');retry.textContent='重试保存';const backup=document.createElement('button');backup.textContent='导出未保存内容';warning.append(message,retry,backup);document.body.append(warning);
  backup.addEventListener('click',()=>downloadJSON(exportPending(),'sanzo-unsaved.json'));
  retry.addEventListener('click',()=>Promise.allSettled([...sync.keys()].map(flushCloudState)));
- function render(){const failed=[...sync.values()].find(s=>s.status==='error');const pending=[...sync.values()].some(s=>s.status==='pending'||s.status==='saving');state.textContent=failed?'尚未保存':pending?'正在保存…':'已保存到云端';entry.dataset.sync=failed?'error':pending?'saving':'saved';warning.hidden=!failed;message.textContent=failed?.message||'';}
- window.addEventListener('sanzo-sync',event=>{sync.set(event.detail.namespace,event.detail);render();});
- api('/api/account').then(result=>{name.textContent=result.profile.name;avatar.textContent=result.profile.name.slice(0,1).toUpperCase();state.textContent=result.local?'本地开发账号':'我的云端资料';entry.title=result.profile.email;if(sync.size)render();}).catch(error=>{state.textContent=error.status===401?'登录后保存到云端':'云端暂不可用';if(error.status===401){entry.href='/login/';}else{sync.set('account',{status:'error',message:error.message});render();}});
+ let guest=false;
+ function render(){if(guest){name.textContent='登录 / 注册';avatar.textContent='S';state.textContent='访客浏览';entry.href=loginURL('/');entry.setAttribute('aria-label','登录或邀请注册');entry.dataset.sync='guest';warning.hidden=true;return;}const failed=[...sync.values()].find(s=>s.status==='error');const pending=[...sync.values()].some(s=>s.status==='pending'||s.status==='saving');state.textContent=failed?'尚未保存':pending?'正在保存…':'已保存到云端';entry.dataset.sync=failed?'error':pending?'saving':'saved';warning.hidden=!failed;message.textContent=failed?.message||'';}
+ window.addEventListener('sanzo-sync',event=>{if(event.detail.status==='guest')guest=true;else sync.set(event.detail.namespace,event.detail);render();});
+ api('/api/account').then(result=>{name.textContent=result.profile.name;avatar.textContent=result.profile.name.slice(0,1).toUpperCase();state.textContent=result.local?'本地开发账号':'我的云端资料';entry.title=result.profile.email;if(sync.size)render();}).catch(error=>{if(error.status===401){guest=true;render();}else{sync.set('account',{status:'error',message:error.message});render();}});
 }
