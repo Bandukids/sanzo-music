@@ -11,6 +11,10 @@
     "setup:selfhost": "node scripts/setup-self-hosted.mjs",
     "storage:doctor": "node scripts/doctor-docker.mjs",
     "storage:backup": "node scripts/backup-docker.mjs",
+    "storage:backup:install": "node scripts/install-backup-schedule.mjs",
+    "storage:backup:uninstall": "node scripts/install-backup-schedule.mjs --uninstall",
+    "storage:backup:status": "node scripts/backup-status.mjs",
+    "tunnel:install": "node scripts/install-cloudflare-service.mjs",
     "storage:restore": "node scripts/restore.mjs"
   },
   "devDependencies": {

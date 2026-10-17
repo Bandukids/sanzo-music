@@ -13,3 +13,4 @@ dist/.openai/
 .sanzo-data/
 .sanzo-backups/
 .deploy.env
+.backup-settings.json

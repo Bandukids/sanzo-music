@@ -64,6 +64,23 @@ node scripts/restore.mjs --from /NAS/sanzo/backups/某个快照 \
 
 Docker 备份：双击 `backup-docker.command` 或执行 `npm run storage:backup`。工具先停止 `app`，通过同一数据库卷和媒体挂载生成 NAS 快照，再恢复 app 运行；不会把旧的本机初始化数据库误当成正式数据。执行 `npm run storage:doctor` 检查容器内实际数据库和媒体。不要对活动 SQLite 文件只执行文件复制。
 
+### 自动备份
+
+执行 `npm run storage:backup:install` 安装 macOS 用户级 launchd 任务 `com.sanzo.music.backup`。计划为每天北京时间 04:00；每 15 分钟检查一次漏跑或失败重试，首次安装会立即补跑。一次成功后，本周期的重复检查不再执行备份。用户需要保持 macOS 账号登录，锁屏可以正常运行；Docker/Colima 和 NAS 需要可用。
+
+独立运行文件安装到 `~/Library/Application Support/SanzoMusic/backup-runtime`，状态和日志位于同级的 `backup-state`。任务不依赖 Codex、终端窗口或项目 Documents 目录，也不复制 AI API 密钥。只复制 NAS 位置、存储标识、卷名和运行用户等备份所需配置。修改存储配置或更新备份脚本后，重新执行安装命令同步运行文件。
+
+备份会验证正式容器挂载，使用该容器实际运行的镜像生成快照，然后启动原容器并等待健康；整个过程不构建镜像、不部署新版本、不重建容器。任务正处于 planning/submitting 阶段时会推迟备份。手动备份与自动备份共用进程锁；被强制中断后的恢复记录用于下次运行时恢复暂停的应用。
+
+自动备份保留最近 7 个有成功备份的自然日、最近 4 个自然周的最新快照，按北京时间、周一为一周起点计算。只有带本任务管理标记、属于当前 NAS 存储且具有完成清单的目录才会清理；现有手动备份、未完成备份和其他目录保留。新备份成功且应用恢复健康后才清理旧快照。清理通过 Docker 内的文件系统执行，避免 Mac 直接清理虚拟机刚写入的 SMB 文件时产生占用标记；删除前再次验证目录归属。
+
+```sh
+npm run storage:backup:status
+npm run storage:backup:uninstall
+```
+
+状态包含最近成功时间、备份位置、文件数、字节数、失败原因和下次重试时间。`schedule.log` 保存执行记录并轮换；失败返回非零退出状态并在 15 分钟后重试。旧快照清理会重试 NAS 暂时性文件错误；清理未完成时单独记录警告，不把已成功的新备份改成失败或重复生成整份备份。当前未接入邮件、短信等外部告警，也未配置另一设备上的独立副本。自动化仍使用完整媒体快照，备份期间网站暂停，停机时间随素材量增加而增长。卸载任务不会删除备份。
+
 恢复只允许写入空目录。它先把数据库复制到本机临时目录，验证完整性、外键、文件清单、大小和校验和，再恢复。恢复后将 DATA_DIR、MEDIA_ROOT、MEDIA_STORAGE_ID 指向恢复位置；容器中 DATA_DIR 为 `/data`，MEDIA_ROOT 为 `/media`。先用新的数据卷验证，确认成功后在 `.deploy.env` 中将 SANZO_DB_VOLUME 和 NAS_MEDIA_ROOT 切换到恢复的数据卷与媒体目录；保留原卷和原媒体目录作为回退。数据库卷声明为 external，Compose 的普通容器清理不会删除它。
 
 NAS 上的数据库备份只能防范 Mac 故障，媒体本身仍需要另一份独立备份。两个共享目录如果在同一台 NAS，不算独立备份设备。
@@ -71,6 +88,8 @@ NAS 上的数据库备份只能防范 Mac 故障，媒体本身仍需要另一�
 ## 公网与当前边界
 
 公网需要把 PUBLIC_ORIGIN 设置为唯一 HTTPS 域名，再配置可信代理/隧道。服务用这个固定来源校验 Host 和 Origin，不相信客户端传入的身份头或转发头。不要把数据库、媒体目录或 NAS 管理界面直接映射到公网。
+
+固定 Cloudflare 域名的购买、授权和切换步骤见 [固定域名接入](cloudflare-domain.md)。
 
 本次提供账号、配额、文件存储和容器生命周期；付费模型工作流沿用原实现。生成前要求至少有 8 MiB 剩余空间，这属于预检查，不是对最终文件大小的保证；保存时再次按实际大小原子检查，超限不会突破配额，但可能需要清理空间后重新同步。1 GiB 存储额度不限制 AI 服务消费金额。
 
@@ -85,3 +104,5 @@ node --test tests/self-hosted.test.mjs
 集成测试覆盖：邀请一次性使用、密码/会话摘要、停用撤销会话、伪造身份头拒绝、管理员权限、HTTPS 来源校验、账号隔离、音频 Range、1 GiB 边界与并发、回收站释放规则、写入中断、媒体目录消失和错误标识、备份恢复及损坏拒绝。设置 SANZO_TEST_ROOT 为 NAS 专用验证目录可在真实 NAS 上测试媒体操作，SQLite 仍位于本机临时目录。断线通过移动项目测试子目录模拟，不卸载整块 NAS。
 
 真实 Docker 与 NAS 验证可执行 `node scripts/validate-container.mjs`。它使用独立测试容器、临时命名卷与 NAS validation 目录，验证非 root 写入、音频 Range、配额拒绝、删除重建容器后保留数据、存储标识失效时拒绝写入、NAS 快照备份，以及恢复到全新卷后的账号、配额和校验和。测试结束后清理本次测试容器和命名卷，最后结果写入 `.sanzo-data/container-validation.json`。
+
+自动备份的隔离验证可执行 `node scripts/validate-backup-automation.mjs`，覆盖真实 NAS 媒体校验和、暂停与恢复原容器、中断恢复记录、错误存储标识失败重试、旧快照清理及同日去重。结果写入 `.sanzo-data/backup-automation-validation.json`；测试不使用正式数据卷。

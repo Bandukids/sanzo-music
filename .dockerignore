@@ -1,6 +1,7 @@
 .git
 .env*
 .deploy.env
+.backup-settings.json
 .sanzo-data
 .sanzo-backups
 .sites-runtime
