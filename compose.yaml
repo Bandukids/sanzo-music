@@ -14,6 +14,9 @@ services:
       PORT: "4173"
       DATA_DIR: /data
       MEDIA_ROOT: /media
+    dns:
+      - "${SANZO_DNS_PRIMARY:-223.5.5.5}"
+      - "${SANZO_DNS_SECONDARY:-119.29.29.29}"
     ports:
       - "127.0.0.1:4173:4173"
     volumes:

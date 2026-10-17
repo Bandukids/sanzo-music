@@ -39,6 +39,8 @@ DOCKER_CONTEXT=colima-sanzo docker-compose --env-file .deploy.env up -d --build 
 
 容器为非 root 用户，根文件系统只读，日志限制为 3×10 MB。健康检查同时验证 SQLite 与 NAS。`restart: unless-stopped` 需要 Docker/Colima 已运行；整机重启后的 Colima 启动和 NAS 自动挂载仍属于宿主机设置。NAS 重新挂载后若容器仍引用旧挂载，需要重建应用容器。
 
+应用容器显式配置主备 DNS，默认 `223.5.5.5` 和 `119.29.29.29`，避免 Colima 的宿主解析配置缺失时，容器内部 DNS 没有外部转发目标而报 `EAI_AGAIN`。可在 `.deploy.env` 通过 `SANZO_DNS_PRIMARY`、`SANZO_DNS_SECONDARY` 替换为当前网络可用的解析器；修改后使用 Compose 重新创建 app 容器即可生效，数据卷和 NAS 保留。网站健康检查只验证数据库与媒体，不能说明外部 AI 接口可达；AI 连接异常时需同时检查容器内 DNS 与供应商接口状态。Docker DNS 设置说明：https://docs.docker.com/reference/compose-file/services/#dns
+
 ## NAS 故障
 
 媒体目录必须包含与 `MEDIA_STORAGE_ID` 匹配的 `.sanzo-storage-id`。启动与每次媒体操作都验证此标识。探测最多等待 3 秒，并合并尚未完成的物理探测，避免 NAS 网络中断时反复占用 I/O 线程。NAS 缺失、目录错误或标识不匹配时，不创建替代目录、不向本地静默回退，并拒绝新上传和新生成任务。已有作品记录保留，存储恢复后可重新同步。
