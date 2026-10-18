@@ -4,14 +4,18 @@ import {selfHostedStorage} from './server/self-hosted-storage.mjs';
 import {createApp} from './server/http-app.mjs';
 import {repairStorage} from './server/storage-repair.mjs';
 import {startTaskSync} from './server/task-sync.mjs';
+import {createOperations} from './server/operations.mjs';
 const config=loadConfig();
 const env=await selfHostedStorage(config);
-await repairStorage(env);
+const service={...config,...env};service.OPS=createOperations(service);
+const beforeRepair=await service.OPS.taskSnapshot();
+const repaired=await repairStorage(service);await service.OPS.observeTasks(beforeRepair);
+if(repaired.interruptedUploads)await service.OPS.record({category:'system',action:'storage_repair',message:'启动时清理了 '+repaired.interruptedUploads+' 个未完成上传，并重新核对存储用量。'});
 const port=Number(config.PORT||4173),host=config.HOST||'127.0.0.1';
 const origin=config.PUBLIC_ORIGIN||`http://127.0.0.1:${port}`;
-const app=createApp({...config,...env},{origin,root:resolve('dist',process.argv.includes('--built')?'client':'')});
-const stopSync=startTaskSync({...config,...env});
-app.listen(port,host,()=>console.log('Local: '+origin));
+const app=createApp(service,{origin,root:resolve('dist',process.argv.includes('--built')?'client':'')});
+const stopSync=startTaskSync(service);
+app.listen(port,host,()=>{console.log('Local: '+origin);void service.OPS.record({category:'system',action:'application_started',message:'应用服务已启动，后台任务同步已启用。'});});
 let closing=false;
-async function close(){if(closing)return;closing=true;app.close(async()=>{await stopSync();await env.runtime.dispose();process.exit(0);});app.closeIdleConnections();setTimeout(()=>process.exit(1),15000).unref();}
+async function close(){if(closing)return;closing=true;app.close(async()=>{await stopSync();await service.OPS.record({category:'system',action:'application_stopped',message:'应用服务正常停止。'});await env.runtime.dispose();process.exit(0);});app.closeIdleConnections();setTimeout(()=>process.exit(1),15000).unref();}
 process.on('SIGTERM',close);process.on('SIGINT',close);

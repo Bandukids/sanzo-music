@@ -36,7 +36,7 @@ export async function handleAuth(request,env,user,{client='local'}={}){
  }
  if(path==='/api/auth/logout'&&method==='POST'){
   const secret=/(?:^|;\s*)sanzo_session=([A-Za-z0-9_-]{43})/.exec(request.headers.get('cookie')||'')?.[1];
-  if(secret)await DB.prepare('DELETE FROM auth_sessions WHERE token_hash=?').bind(hash(secret)).run();return json({ok:true},200,{'Set-Cookie':cookie('',url.protocol==='https:',0)});
+  if(secret)await DB.prepare('DELETE FROM auth_sessions WHERE token_hash=?').bind(hash(secret)).run();if(user)await env.OPS?.record({category:'auth',action:'logout',actorId:user.id,message:'用户退出登录。'});return json({ok:true},200,{'Set-Cookie':cookie('',url.protocol==='https:',0)});
  }
  if(path==='/api/admin/users'&&method==='GET'){
   if(user?.role!=='admin')return fail('需要管理员权限。',403);
@@ -54,6 +54,7 @@ export async function handleAuth(request,env,user,{client='local'}={}){
   const matches=await passwordMatches(body.password,account?.password_hash);
   if(!account?.enabled||!account.password_hash||!matches)return fail('邮箱或密码不正确。',401);
   const secret=token();await DB.batch([DB.prepare('DELETE FROM auth_sessions WHERE expires_at<?').bind(Date.now()),DB.prepare('INSERT INTO auth_sessions VALUES(?,?,?)').bind(hash(secret),account.user_id,Date.now()+7*DAY)]);
+  await env.OPS?.record({category:'auth',action:'login',actorId:account.user_id,message:'用户登录成功。'});
   return json({ok:true},200,{'Set-Cookie':cookie(secret,url.protocol==='https:')});
  }
  if(path==='/api/auth/accept'&&method==='POST'){
@@ -65,11 +66,12 @@ export async function handleAuth(request,env,user,{client='local'}={}){
   DB.raw.exec('BEGIN IMMEDIATE');
   try{const removed=DB.raw.prepare('DELETE FROM auth_invites WHERE token_hash=? AND expires_at>?').run(hash(body.token),Date.now());if(!removed.changes){DB.raw.exec('ROLLBACK');return fail('邀请已失效。',410);}DB.raw.prepare('UPDATE auth_accounts SET password_hash=? WHERE user_id=?').run(encoded,invite.user_id);DB.raw.prepare('DELETE FROM auth_sessions WHERE user_id=?').run(invite.user_id);DB.raw.exec('COMMIT');}
   catch(error){DB.raw.exec('ROLLBACK');throw error;}
+  await env.OPS?.record({category:'auth',action:'password_set',actorId:invite.user_id,message:'用户通过一次性邀请完成密码设置。'});
   return json({ok:true});
  }
  if(path==='/api/admin/invites'&&method==='POST'){
   if(user?.role!=='admin')return fail('需要管理员权限。',403);if(!validEmail(body.email))return fail('请输入有效邮箱。');
-  const invite=await createInvite(DB,body.email);return json({url:url.origin+'/login/#invite='+invite.token,expiresInHours:24},201);
+  const invite=await createInvite(DB,body.email);await env.OPS?.record({category:'admin',action:'invitation_created',actorId:user.id,resourceId:invite.userId,message:'管理员生成了 24 小时有效的一次性设置链接。'});return json({url:url.origin+'/login/#invite='+invite.token,expiresInHours:24},201);
  }
  const match=/^\/api\/admin\/users\/([a-f0-9-]{36})$/.exec(path);
  if(match&&method==='PATCH'){
@@ -77,7 +79,7 @@ export async function handleAuth(request,env,user,{client='local'}={}){
   const account=await DB.prepare('SELECT * FROM auth_accounts WHERE user_id=?').bind(match[1]).first();if(!account)return fail('账号不存在。',404);
   if(body.enabled!==undefined&&typeof body.enabled!=='boolean'||body.quotaBytes!==undefined&&(!Number.isSafeInteger(body.quotaBytes)||body.quotaBytes<0||body.quotaBytes>1099511627776))return fail('账号状态或容量格式不正确。');
   if(account.role==='admin'&&body.enabled===false)return fail('不能停用管理员账号。');
-  await DB.batch([DB.prepare('UPDATE auth_accounts SET enabled=?,quota_bytes=? WHERE user_id=?').bind(body.enabled===undefined?account.enabled:Number(body.enabled),body.quotaBytes??account.quota_bytes,account.user_id),...(body.enabled===false?[DB.prepare('DELETE FROM auth_sessions WHERE user_id=?').bind(account.user_id)]:[])]);return json({ok:true});
+  await DB.batch([DB.prepare('UPDATE auth_accounts SET enabled=?,quota_bytes=? WHERE user_id=?').bind(body.enabled===undefined?account.enabled:Number(body.enabled),body.quotaBytes??account.quota_bytes,account.user_id),...(body.enabled===false?[DB.prepare('DELETE FROM auth_sessions WHERE user_id=?').bind(account.user_id)]:[])]);await env.OPS?.record({category:'admin',action:'account_updated',actorId:user.id,resourceId:account.user_id,message:'管理员更新了账号设置。'+(body.quotaBytes===undefined?'':' 容量：'+body.quotaBytes+' 字节。')+(body.enabled===undefined?'':body.enabled?' 已启用。':' 已停用并撤销登录会话。')});return json({ok:true});
  }
  return fail('未找到此接口。',404);
 }

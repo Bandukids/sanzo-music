@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "setup:selfhost": "node scripts/setup-self-hosted.mjs",
     "storage:doctor": "node scripts/doctor-docker.mjs",
+    "ops:status": "node scripts/ops-status.mjs",
     "storage:backup": "node scripts/backup-docker.mjs",
     "storage:backup:install": "node scripts/install-backup-schedule.mjs",
     "storage:backup:uninstall": "node scripts/install-backup-schedule.mjs --uninstall",

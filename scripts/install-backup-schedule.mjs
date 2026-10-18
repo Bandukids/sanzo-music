@@ -9,7 +9,7 @@ const project=fileURLToPath(new URL('../',import.meta.url)),base=resolve(homedir
 const label='com.sanzo.music.backup',agents=resolve(homedir(),'Library/LaunchAgents'),plist=resolve(agents,label+'.plist'),domain='gui/'+process.getuid();
 if(process.argv.includes('--uninstall')){try{execFileSync('/bin/launchctl',['bootout',domain+'/'+label],{stdio:'ignore'});}catch{}await rm(plist,{force:true});console.log('自动备份任务已卸载，备份数据和状态记录保留。');process.exit(0);}
 await mkdir(runtime,{recursive:true,mode:0o700});await mkdir(settings.controlDir,{recursive:true,mode:0o700});
-for(const name of ['scripts/backup-docker.mjs','scripts/scheduled-backup.mjs','server/backup-automation.mjs','server/file-bucket.mjs']){const target=resolve(runtime,name);await mkdir(resolve(target,'..'),{recursive:true,mode:0o700});await copyFile(resolve(project,name),target);await chmod(target,0o600);}
+for(const name of ['scripts/backup-docker.mjs','scripts/scheduled-backup.mjs','scripts/publish-backup-status.mjs','server/backup-automation.mjs','server/backup-state.mjs','server/file-bucket.mjs']){const target=resolve(runtime,name);await mkdir(resolve(target,'..'),{recursive:true,mode:0o700});await copyFile(resolve(project,name),target);await chmod(target,0o600);}
 await writeJSON(resolve(runtime,'.backup-settings.json'),settings);
 await mkdir(agents,{recursive:true});
 const xml=value=>value.replace(/[<>&"']/g,char=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[char]));
@@ -33,3 +33,4 @@ try{execFileSync('/bin/launchctl',['bootout',domain+'/'+label],{stdio:'ignore'})
 execFileSync('/bin/launchctl',['bootstrap',domain,plist],{stdio:'inherit'});
 console.log('自动备份已安装：每日北京时间 04:00；每 15 分钟检查失败重试或补跑。');
 console.log('状态目录：'+settings.controlDir);console.log('首次备份已由 launchd 启动。');
+console.log('备份状态摘要会自动同步到网站数据库。');

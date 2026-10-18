@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {homedir} from 'node:os';
 import {FileBucket} from '../server/file-bucket.mjs';
 import {BACKUP_MANAGER,readJSON,writeJSON,acquireBackupLock,pruneBackups} from '../server/backup-automation.mjs';
+import {publishBackupStatus} from './publish-backup-status.mjs';
 const execute=promisify(execFile),root=fileURLToPath(new URL('../',import.meta.url));
 const parse=source=>Object.fromEntries(source.split(/\r?\n/).map(line=>/^([A-Z][A-Z0-9_]*)=(.*)$/.exec(line)).filter(Boolean).map(([,key,value])=>[key,value.trim()]));
 export async function backupSettings(directory=root){
@@ -61,6 +62,7 @@ export async function performDockerBackup({managed=false,settings}={}){
    };
    try{result.retention=await pruneBackups(backups,settings.storageId,()=>bucket.check(),remove);}catch(error){result.retention={warning:error.message};console.error('备份成功，旧快照清理未完成：'+error.message);}
   }
+  await publishBackupStatus(settings).catch(error=>console.error(error.message));
   return result;
  }finally{process.off('SIGTERM',signal);process.off('SIGINT',signal);await release();}
 }

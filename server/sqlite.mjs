@@ -50,5 +50,16 @@ export async function migrate(DB) {
  CREATE TABLE IF NOT EXISTS auth_sessions (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES auth_accounts(user_id),expires_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS auth_invites (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES auth_accounts(user_id),expires_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS auth_attempts (client TEXT PRIMARY KEY,count INTEGER NOT NULL,expires_at INTEGER NOT NULL);
- CREATE TABLE IF NOT EXISTS auth_settings (name TEXT PRIMARY KEY,value TEXT NOT NULL);`);
+ CREATE TABLE IF NOT EXISTS auth_settings (name TEXT PRIMARY KEY,value TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS ops_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,created_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,
+  level TEXT NOT NULL CHECK(level IN ('info','warn','error')),category TEXT NOT NULL,
+  action TEXT NOT NULL,actor_id TEXT,resource_id TEXT,request_id TEXT,provider TEXT,model TEXT,
+  status INTEGER,duration_ms INTEGER,code TEXT,message TEXT NOT NULL,
+  prompt_tokens INTEGER,completion_tokens INTEGER,repeat_count INTEGER NOT NULL DEFAULT 1,
+  repeat_key TEXT NOT NULL UNIQUE
+ );
+ CREATE INDEX IF NOT EXISTS ops_events_time ON ops_events(last_seen_at DESC,id DESC);
+ CREATE INDEX IF NOT EXISTS ops_events_level_time ON ops_events(level,last_seen_at DESC);
+ CREATE INDEX IF NOT EXISTS ops_events_actor_time ON ops_events(actor_id,last_seen_at DESC);`);
 }

@@ -2,9 +2,10 @@ import {appendFile,rename,stat,mkdir} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {backupSettings,performDockerBackup} from './backup-docker.mjs';
 import {readJSON,writeJSON,backupDue,latestBackupSlot} from '../server/backup-automation.mjs';
+import {publishBackupStatus} from './publish-backup-status.mjs';
 const settings=await backupSettings(),path=resolve(settings.controlDir,'schedule-status.json'),log=resolve(settings.controlDir,'schedule.log');
 const now=new Date(),state=await readJSON(path,{}),force=process.argv.includes('--now');
-if(!force&&!backupDue(state,now))process.exit(0);
+if(!force&&!backupDue(state,now)){await publishBackupStatus(settings).catch(error=>console.error(error.message));process.exit(0);}
 await mkdir(settings.controlDir,{recursive:true,mode:0o700});
 try{if((await stat(log)).size>1048576)await rename(log,log+'.previous');}catch(error){if(error.code!=='ENOENT')throw error;}
 const record=async message=>appendFile(log,new Date().toISOString()+' '+message+'\n',{mode:0o600});
@@ -19,3 +20,4 @@ try{
  await record((busy?'推迟：':'失败：')+error.message+'；下次重试 '+nextAttemptAt);console.error(error.message);
  process.exitCode=busy?75:1;
 }
+await publishBackupStatus(settings).catch(error=>console.error(error.message));
