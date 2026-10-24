@@ -6,6 +6,7 @@ const token=()=>randomBytes(32).toString('base64url');
 const json=(body,status=200,headers={})=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...headers}});
 const fail=(message,status=400)=>json({error:{message}},status);
 export const validEmail=value=>typeof value==='string'&&value.length<=254&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+export const publicRegistrationEnabled=env=>['true','1'].includes(String(env.PUBLIC_REGISTRATION||'').trim().toLowerCase());
 async function passwordHash(password){const salt=randomBytes(16).toString('hex');return 'scrypt$'+salt+'$'+Buffer.from(await scrypt(password,salt,64,{N:32768,r:8,p:1,maxmem:67108864})).toString('hex');}
 async function passwordMatches(password,encoded){const [,salt,digest]=(encoded||'scrypt$dummy$'+'0'.repeat(128)).split('$');const actual=Buffer.from(await scrypt(password,salt,64,{N:32768,r:8,p:1,maxmem:67108864}));return timingSafeEqual(actual,Buffer.from(digest,'hex'));}
 export async function createInvite(DB,email,{role='user',name=email.split('@')[0]}={}){
@@ -30,6 +31,7 @@ async function limited(DB,client,max=10){
 const cookie=(secret,secure,age=604800)=>`sanzo_session=${secret}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure?'; Secure':''}`;
 export async function handleAuth(request,env,user,{client='local'}={}){
  const DB=env.DB,url=new URL(request.url),path=url.pathname,method=request.method;
+ if(path==='/api/auth/options'&&method==='GET')return json({registrationOpen:publicRegistrationEnabled(env)});
  if(path==='/api/auth/session'&&method==='GET')return user?json({user}):fail('请先登录。',401);
  if(method!=='GET'){
   const origin=request.headers.get('origin');if(origin&&origin!==url.origin||request.headers.get('sec-fetch-site')==='cross-site')return fail('请从本站发起操作。',403);
@@ -46,19 +48,42 @@ export async function handleAuth(request,env,user,{client='local'}={}){
  if(['POST','PATCH'].includes(method)){
   if(!request.headers.get('content-type')?.startsWith('application/json'))return fail('请使用 JSON 格式。');
   try{const raw=await request.text();if(raw.length>8192)return fail('请求过大。',413);body=JSON.parse(raw);}catch{return fail('请求格式不正确。');}
+  if(!body||typeof body!=='object'||Array.isArray(body))return fail('请求格式不正确。');
+ }
+ if(path==='/api/auth/register'&&method==='POST'){
+  if(!publicRegistrationEnabled(env))return fail('公开注册暂未开放，请使用邀请链接或联系管理员。',403);
+  if(Object.keys(body).some(key=>!['email','password','name'].includes(key)))return fail('注册信息包含不支持的字段。');
+  const email=typeof body.email==='string'?body.email.trim().toLowerCase():'';
+  if(!validEmail(email))return fail('请输入有效邮箱。');
+  if(typeof body.password!=='string'||body.password.length<12||body.password.length>256)return fail('密码需为 12–256 个字符。');
+  if(body.name!==undefined&&(typeof body.name!=='string'||!body.name.trim()||body.name.trim().length>60))return fail('昵称需为 1–60 个字符，或留空。');
+  const exists=()=>DB.prepare('SELECT user_id FROM auth_accounts WHERE email=?').bind(email).first();
+  const duplicate=()=>fail('该邮箱已注册或已受邀，请登录或联系管理员。',409);
+  if(await exists())return duplicate();
+  if(!await limited(DB,'register:email:'+hash(email),5)||!await limited(DB,'register:network:'+client,500)||!await limited(DB,'register:global',1000))return fail('注册请求较多，请稍后再试。',429);
+  const encoded=await passwordHash(body.password),id=randomUUID(),now=new Date().toISOString(),secret=token();
+  try{await DB.batch([
+   DB.prepare('INSERT INTO users(id,email,name,created_at,updated_at) VALUES(?,?,?,?,?)').bind(id,email,(body.name?.trim()||email.split('@')[0]).slice(0,60),now,now),
+   DB.prepare("INSERT INTO auth_accounts(user_id,email,password_hash,role,enabled,quota_bytes,created_at) VALUES(?,?,?,'user',1,1073741824,?)").bind(id,email,encoded,now),
+   DB.prepare('INSERT INTO auth_sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(hash(secret),id,Date.now()+7*DAY)
+  ]);}catch(error){if(await exists())return duplicate();throw error;}
+  await env.OPS?.record({category:'auth',action:'register',actorId:id,message:'用户自主注册成功，默认空间 1GB。'});
+  return json({ok:true},201,{'Set-Cookie':cookie(secret,url.protocol==='https:')});
  }
  if(path==='/api/auth/login'&&method==='POST'){
-  if(!await limited(DB,'ip:'+client)||!await limited(DB,'global',100))return fail('尝试次数过多，请 15 分钟后重试。',429);
-  if(!validEmail(body.email)||typeof body.password!=='string'||body.password.length>256)return fail('邮箱或密码不正确。',401);
-  const account=await DB.prepare('SELECT * FROM auth_accounts WHERE email=?').bind(body.email.toLowerCase()).first();
+  const email=typeof body.email==='string'?body.email.trim().toLowerCase():'';
+  if(!validEmail(email)||typeof body.password!=='string'||body.password.length>256)return fail('邮箱或密码不正确。',401);
+  const attemptKey='login:email:'+hash(email);
+  if(!await limited(DB,attemptKey,10)||!await limited(DB,'login:network:'+client,1000)||!await limited(DB,'login:global',2000))return fail('尝试次数过多，请 15 分钟后重试。',429);
+  const account=await DB.prepare('SELECT * FROM auth_accounts WHERE email=?').bind(email).first();
   const matches=await passwordMatches(body.password,account?.password_hash);
   if(!account?.enabled||!account.password_hash||!matches)return fail('邮箱或密码不正确。',401);
-  const secret=token();await DB.batch([DB.prepare('DELETE FROM auth_sessions WHERE expires_at<?').bind(Date.now()),DB.prepare('INSERT INTO auth_sessions VALUES(?,?,?)').bind(hash(secret),account.user_id,Date.now()+7*DAY)]);
+  const secret=token();await DB.batch([DB.prepare('DELETE FROM auth_attempts WHERE client=?').bind(attemptKey),DB.prepare('DELETE FROM auth_sessions WHERE expires_at<?').bind(Date.now()),DB.prepare('INSERT INTO auth_sessions VALUES(?,?,?)').bind(hash(secret),account.user_id,Date.now()+7*DAY)]);
   await env.OPS?.record({category:'auth',action:'login',actorId:account.user_id,message:'用户登录成功。'});
   return json({ok:true},200,{'Set-Cookie':cookie(secret,url.protocol==='https:')});
  }
  if(path==='/api/auth/accept'&&method==='POST'){
-  if(!await limited(DB,'ip:'+client)||!await limited(DB,'global',100))return fail('尝试次数过多，请稍后重试。',429);
+  if(!await limited(DB,'invite:network:'+client,500)||!await limited(DB,'invite:global',1000))return fail('尝试次数过多，请稍后重试。',429);
   if(typeof body.token!=='string'||body.token.length!==43||typeof body.password!=='string'||body.password.length<12||body.password.length>256)return fail('密码需为 12–256 个字符，且需使用有效邀请链接。');
   const invite=await DB.prepare('SELECT i.* FROM auth_invites i JOIN auth_accounts a ON a.user_id=i.user_id WHERE i.token_hash=? AND i.expires_at>? AND a.enabled=1').bind(hash(body.token),Date.now()).first();
   if(!invite)return fail('邀请已失效，请联系管理员重新生成。',410);
