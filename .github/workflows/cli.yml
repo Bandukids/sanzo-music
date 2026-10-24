@@ -1,0 +1,23 @@
+name: CLI
+on:
+  push:
+    paths: ['cli/**', 'tests/cli.test.mjs', 'server/**', '.github/workflows/cli.yml']
+  pull_request:
+    paths: ['cli/**', 'tests/cli.test.mjs', 'server/**', '.github/workflows/cli.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test tests/cli.test.mjs
+      - run: node cli/bin/sanzo.mjs --help
+      - run: npm pack ./cli --dry-run

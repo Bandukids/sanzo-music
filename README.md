@@ -13,6 +13,21 @@ SANZO 是一个音乐创作、语音生成和歌曲再创作网站。当前版�
 
 Sounds / Woosh 和模型训练目前暂未开放。Studio 的 Cover、Speech 和 Songs 均已接入对应工作流。
 
+## 命令行 CLI
+
+网站功能也可通过 `sanzo` 命令使用，支持自托管账号登录、托管站点 Cookie、歌曲与 ABC 生成、语音设计与克隆、Studio、任务等待与下载、素材与回收站、工作区、专辑、封面、发布和管理员诊断。CLI 无第三方运行时依赖，需要 Node.js 24 或更高版本。
+
+```sh
+# 从 GitHub 安装固定版本
+npm install -g 'git+https://github.com/Bandukids/sanzo-music.git#sanzo-cli-v0.1.0'
+sanzo config set-url http://127.0.0.1:4173
+sanzo auth login --email you@example.com
+sanzo songs create --styles 'warm piano pop' --lyrics @lyrics.txt --wait
+sanzo --help
+```
+
+已有源码时可运行 `npm run cli -- --help`，或 `npm install -g ./cli`。也可安装 [GitHub Release](https://github.com/Bandukids/sanzo-music/releases/tag/sanzo-cli-v0.1.0) 中的独立 `.tgz`。完整命令、自动化用法及功能范围见 [CLI 文档](cli/README.md)。
+
 ## 本地运行
 
 在 Mac / Docker / NAS 上运行受邀制站点，请先阅读 [独立部署说明](docs/self-hosting.md)。Node 服务已改为真实账号、原生 SQLite 和媒体目录，不再自动登录共享开发账号。首次运行需执行 `npm run setup:selfhost -- --email 管理员邮箱 --media 媒体绝对路径`。

@@ -1,0 +1,11 @@
+{
+  "name": "@sanzo/music-cli",
+  "version": "0.1.0",
+  "description": "Command-line client for SANZO AI Music",
+  "type": "module",
+  "bin": { "sanzo": "bin/sanzo.mjs" },
+  "files": ["bin/", "lib/", "README.md"],
+  "engines": { "node": ">=24" },
+  "repository": { "type": "git", "url": "git+https://github.com/Bandukids/sanzo-music.git", "directory": "cli" },
+  "scripts": { "test": "node --test ../tests/cli.test.mjs" }
+}
