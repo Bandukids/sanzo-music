@@ -25,9 +25,9 @@ const analysisId = '22222222-2222-4222-8222-222222222222';
 const cookieValue = 'sanzo_session=' + 'a'.repeat(43);
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {status, headers: {'Content-Type': 'application/json', ...headers}});
 
-async function temporary(t) {
+async function temporary(t, {cleanup = true} = {}) {
   const root = await mkdtemp(join(tmpdir(), 'sanzo-cli-'));
-  t.after(() => rm(root, {recursive: true, force: true}));
+  if (cleanup) t.after(() => rm(root, {recursive: true, force: true}));
   return root;
 }
 
@@ -223,12 +223,19 @@ test('fallback cover downloads allow only known same-origin static assets', asyn
 });
 
 test('real HTTP server: invitation, login, quota, uploads, state, speech job, albums, covers, releases, trash and admin', async t => {
-  const root = await temporary(t), media = join(root, 'media');
+  const root = await temporary(t, {cleanup: false}), media = join(root, 'media');
+  let app, env;
+  t.after(async () => {
+    if (app?.listening) { app.closeAllConnections(); await new Promise(resolveClose => app.close(resolveClose)); }
+    await env?.runtime.dispose();
+    // Windows requires closing SQLite before removing its directory.
+    await rm(root, {recursive: true, force: true});
+  });
   const marker = await initializeMedia(media);
-  const env = await selfHostedStorage({DATA_DIR: join(root, 'db'), MEDIA_ROOT: media, MEDIA_STORAGE_ID: marker});
+  env = await selfHostedStorage({DATA_DIR: join(root, 'db'), MEDIA_ROOT: media, MEDIA_STORAGE_ID: marker});
   env.RUNNINGHUB_CN_API_KEY = 'test-only-not-a-real-api-key';
   let upstreamSubmissions = 0;
-  const app = createServer();
+  app = createServer();
   app.listen(0, '127.0.0.1'); await once(app, 'listening');
   const url = 'http://127.0.0.1:' + app.address().port;
   const requestApp = createApp(env, {origin: url, root: resolve('dist'), fetchImpl: async url => {
@@ -240,7 +247,6 @@ test('real HTTP server: invitation, login, quota, uploads, state, speech job, al
   app.on('request', requestApp.listeners('request')[0]);
   await writeConfig(join(root, 'config.json'), {url});
   const fetchImpl = fetch;
-  t.after(async () => { app.closeAllConnections(); await new Promise(resolveClose => app.close(resolveClose)); await env.runtime.dispose(); });
   const cli = async (args, extra) => {
     const result = await invoke(root, args, {fetchImpl, ...extra});
     assert.equal(result.code, 0, args.join(' ') + ': ' + result.err);

@@ -9,6 +9,7 @@ permissions:
   contents: read
 jobs:
   test:
+    timeout-minutes: 5
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -18,6 +19,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node --test tests/cli.test.mjs
+      - run: node --test --test-timeout=60000 tests/cli.test.mjs
       - run: node cli/bin/sanzo.mjs --help
       - run: npm pack ./cli --dry-run
